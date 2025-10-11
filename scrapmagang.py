@@ -25,24 +25,6 @@ st.set_page_config(
 )
 st.title("Sistem Analisis Lowongan MagangHub")
 
-# Sidebar Theme
-theme_option = st.sidebar.selectbox("Pilih Theme", ["Light", "Dark"])
-if theme_option == "Dark":
-    st.markdown(
-        """
-        <style>
-        .reportview-container {
-            background-color: #0e1117;
-            color: #f0f0f0;
-        }
-        .stButton>button {
-            background-color: #1e293b;
-            color: white;
-        }
-        </style>
-        """, unsafe_allow_html=True
-    )
-
 # =====================
 # FUNGSI AMBIL DATA API
 # =====================
@@ -91,6 +73,7 @@ def label_otomatis(nama, alamat, deskripsi):
 # =====================
 # LOAD DATA OTOMATIS
 # =====================
+
 @st.cache_data(show_spinner=False)
 def load_data():
     all_data = ambil_data_api()
@@ -170,13 +153,13 @@ else:
     st.write(f"Menampilkan {len(df)} data dari total {len(df)} lowongan.")
     st.dataframe(df, use_container_width=True)
 
-    st.subheader("🖼️ Contoh Banner Perusahaan")
-    for _, row in df.head(3).iterrows():
-        st.markdown(f"**{row['Instansi']}** — {row['Judul']} — {row['Tanggal Ditambahkan']}")
-        if row["Banner"]:
-            st.image(row["Banner"], width=400)
-        else:
-            st.write("_Tidak ada banner tersedia_")
+    # st.subheader("🖼️ Contoh Banner Perusahaan")
+    # for _, row in df.head(3).iterrows():
+    #     st.markdown(f"**{row['Instansi']}** — {row['Judul']} — {row['Tanggal Ditambahkan']}")
+    #     if row["Banner"]:
+    #         st.image(row["Banner"], width=400)
+    #     else:
+    #         st.write("_Tidak ada banner tersedia_")
 
     # Tombol download
     csv = df.to_csv(index=False).encode("utf-8")
