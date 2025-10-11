@@ -15,8 +15,8 @@ MAX_PAGE = 30
 MODEL_PATH = "model_maganghub.pkl"
 VECTORIZER_PATH = "vectorizer_maganghub.pkl"
 
-st.set_page_config(page_title="MagangHub Intelligence", layout="wide")
-st.title("💼 Sistem Analisis Lowongan MagangHub")
+st.set_page_config(page_title="Filterisasi Lowongan Magang", layout="wide")
+st.title("Sistem Analisis Lowongan MagangHub")
 
 # =====================
 # FUNGSI AMBIL DATA API
@@ -166,7 +166,7 @@ if st.button("📥 Ambil Data Lowongan"):
 if st.session_state.dataframe is not None:
     df = st.session_state.dataframe.copy()
 
-    st.subheader("📊 Data Lowongan Magang (Terbaru → Terlama)")
+    st.subheader("Data Lowongan Magang")
 
     # Filter Jenis Instansi
     jenis_filter = st.selectbox("🧩 Filter Jenis Instansi", ["Semua"] + sorted(df["jenis_instansi"].unique().tolist()))
