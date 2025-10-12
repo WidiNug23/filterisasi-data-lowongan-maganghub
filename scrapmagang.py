@@ -58,7 +58,6 @@ def ambil_data_api():
 
 
 # === Fungsi muat dan olah data ===
-@st.cache_data(show_spinner=False)
 def load_data():
     data = ambil_data_api()
     records = []
