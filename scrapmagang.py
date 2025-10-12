@@ -6,7 +6,7 @@ import time
 
 # === Konfigurasi dasar ===
 st.set_page_config(page_title="Filterisasi Lowongan Magang", layout="wide")
-st.title(" Filterisasi Lowongan MagangHub")
+st.title("Sistem Filterisasi Lowongan MagangHub")
 
 BASE_URL = "https://maganghub.kemnaker.go.id/be/v1/api/list/vacancies-aktif"
 LIMIT = 100  # batas per halaman dari API
@@ -48,7 +48,7 @@ def ambil_data_api():
         time.sleep(0.05)
 
     progress.empty()
-    status.text(f"Total data diperoleh: {len(all_data):,}")
+    status.text(f"✅ Total data diperoleh: {len(all_data):,}")
     return all_data
 
 
