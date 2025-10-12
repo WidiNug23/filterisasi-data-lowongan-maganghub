@@ -187,6 +187,13 @@ custom_css = """
     [data-testid="stDecoration"] {visibility: hidden !important;}
     [data-testid="stStatusWidget"] {visibility: hidden !important;}
     #MainMenu, header, footer {visibility: hidden !important;}
+    
+    [data-testid="stDecoration"] {visibility: hidden !important;}
+    [data-testid="stStatusWidget"] {visibility: hidden !important;}
+    .stAppDeployButton {display: none !important;}
+    [data-testid="stStreamlitBadge"] {visibility: hidden !important;}
+    footer:has([alt="Streamlit"]) {display: none !important;}
+    div[data-testid="stBottomBlockContainer"] {visibility: hidden !important;}
 
     body, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stSidebar"] {
         background-color: #0E1117 !important;
