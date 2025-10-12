@@ -22,7 +22,7 @@ model, vectorizer = load_model()
 
 
 # === Ambil semua data API tanpa batas halaman ===
-def ambil_data_api():
+def ambil_data_api(_force_refresh=time.time()):
     all_data = []
     page = 1
     status = st.empty()
