@@ -11,6 +11,25 @@ st.title("Sistem Filterisasi Lowongan MagangHub")
 BASE_URL = "https://maganghub.kemnaker.go.id/be/v1/api/list/vacancies-aktif"
 LIMIT = 100  # batas per halaman dari API
 
+# === CSS global untuk sembunyikan semua icon GitHub & Streamlit sejak loading ===
+st.markdown("""
+<style>
+/* sembunyikan semua elemen Streamlit, toolbar, badge, footer, header */
+#MainMenu, header, footer, [data-testid="stToolbar"], [data-testid="stDecoration"], 
+[data-testid="stStatusWidget"], [data-testid="stStreamlitBadge"], 
+.stAppDeployButton, div[data-testid="stBottomBlockContainer"],
+div[class*="_profilePreview_"], div[data-testid="appCreatorAvatar"],
+a[href*="share.streamlit.io/user/"], img[alt="App Creator Avatar"],
+[data-testid="stHeader"] [href*="github.com"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    position: fixed !important;
+    z-index: -999 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # === Load model dan vectorizer ===
 @st.cache_resource
 def load_model():
@@ -20,8 +39,7 @@ def load_model():
 
 model, vectorizer = load_model()
 
-
-# === Ambil semua data API tanpa batas halaman ===
+# === Fungsi ambil data API ===
 def ambil_data_api():
     all_data = []
     page = 1
@@ -47,17 +65,13 @@ def ambil_data_api():
         page += 1
         time.sleep(0.05)
 
-    # bersihkan progress bar
     progress.empty()
-    # tampilkan teks akhir baru (tanpa cache efek)
     final_text = f"Diperoleh {format(len(all_data), ',').replace(',', '.')} lowongan"
     status.text(final_text)
-    st.session_state["last_status"] = final_text  # pastikan teks tetap tersimpan di sesi
-
+    st.session_state["last_status"] = final_text
     return all_data
 
-
-# === Fungsi muat dan olah data ===
+# === Fungsi olah data API menjadi DataFrame ===
 def load_data():
     data = ambil_data_api()
     records = []
@@ -68,7 +82,7 @@ def load_data():
         deskripsi = perusahaan.get("deskripsi_perusahaan", "")
         teks = f"{nama} {alamat} {deskripsi}"
 
-        # Prediksi jenis instansi (Negeri / Swasta)
+        # Prediksi jenis instansi
         jenis_pred = model.predict(vectorizer.transform([teks]))[0]
         if jenis_pred not in ["Negeri", "Swasta"]:
             jenis_pred = "Swasta"
@@ -92,20 +106,22 @@ def load_data():
     df.drop_duplicates(subset=["Lowongan", "Instansi"], inplace=True)
     return df
 
+# === Load data utama sekali saja ===
+if "df" not in st.session_state:
+    with st.spinner("Memuat data dari MagangHub..."):
+        st.session_state.df = load_data()
 
-# === Load data utama ===
-with st.spinner("Memuat data dari MagangHub..."):
-    df = load_data()
+df = st.session_state.df
 
 if df.empty:
     st.warning("⚠️ Tidak ada data yang ditemukan.")
     st.stop()
 
-# === Inisialisasi session_state ===
+# === Session state untuk filtered df ===
 if "filtered_df" not in st.session_state:
     st.session_state.filtered_df = df.copy()
 
-# === Filter Input ===
+# === Filter input ===
 col1, col2, col3 = st.columns([2, 2, 1])
 with col1:
     search = st.text_input("🔍 Masukkan kata kunci (Instansi/Posisi Lowongan/Lokasi)", key="search")
@@ -116,13 +132,10 @@ with col3:
 
 # === Fungsi filter ===
 def apply_filter():
-    filtered = df.copy()
-
-    # Filter jenis instansi (bisa tanpa keyword)
+    filtered = st.session_state.df.copy()
     if jenis_filter != "Semua":
         filtered = filtered[filtered["Jenis Instansi"] == jenis_filter]
 
-    # Filter berdasarkan kata kunci jika diisi
     if search.strip():
         filtered = filtered[
             filtered["Instansi"].str.contains(search, case=False, na=False) |
@@ -131,14 +144,10 @@ def apply_filter():
         ]
     return filtered
 
-
-# === Jalankan filter jika tombol diklik atau Enter ditekan ===
+# === Jalankan filter ===
 show_count = False
 if cari_btn or search != "":
-    # Jalankan filter apapun kondisi inputnya
     st.session_state.filtered_df = apply_filter()
-
-    # Tampilkan jumlah hanya jika user isi keyword
     show_count = bool(search.strip())
 
 filtered_df = st.session_state.filtered_df
@@ -147,29 +156,24 @@ filtered_df = st.session_state.filtered_df
 if show_count:
     st.markdown(f"📄 Menampilkan **{len(filtered_df):,}** hasil pencarian.")
 
-# === Pewarnaan angka peluang ===
+# === Format tabel & pewarnaan peluang ===
 def peluang_label(val):
     if pd.isna(val):
         return ""
     if val >= 75:
-        warna = "#00CC66"  # hijau
+        warna = "#00CC66"
     elif val >= 50:
-        warna = "#FFD700"  # kuning
+        warna = "#FFD700"
     elif val >= 25:
-        warna = "#FF9900"  # oranye
+        warna = "#FF9900"
     else:
-        warna = "#FF4B4B"  # merah
+        warna = "#FF4B4B"
     return f"<span style='color:{warna}; font-weight:bold;'>{val}%</span>"
 
-
-# === Format data tampil ===
 df_tampil = filtered_df.copy()
 df_tampil["Tanggal Publikasi"] = df_tampil["Tanggal Publikasi"].dt.strftime("%d %b %Y %H:%M")
-
-# Tambahkan simbol bintang (*) di header kolom "Jenis Instansi"
 df_tampil.rename(columns={"Jenis Instansi": "* Jenis Instansi"}, inplace=True)
 
-# === Tampilkan keterangan di atas tabel ===
 st.markdown(
     """
     <p style='color:#AAAAAA; font-size:13px; font-style:italic; text-align:left; margin-top:-10px; margin-bottom:10px;'>
@@ -179,7 +183,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# === Tabel tampil ===
 st.dataframe(
     df_tampil.style.format({
         "Peluang Lolos (%)": lambda x: f"{x}%" if pd.notna(x) else "-"
@@ -196,30 +199,6 @@ st.dataframe(
     use_container_width=True,
     height=850
 )
-
-# === Sembunyikan toolbar & ubah ke dark mode ===
-st.markdown("""
-<style>
-/* Sembunyikan semua header/footer dan badge Streamlit */
-#MainMenu, header, footer, [data-testid="stToolbar"], [data-testid="stDecoration"], 
-[data-testid="stStatusWidget"], [data-testid="stStreamlitBadge"], 
-.stAppDeployButton, div[data-testid="stBottomBlockContainer"],
-div[class*="_profilePreview_"], div[data-testid="appCreatorAvatar"],
-a[href*="share.streamlit.io/user/"], img[alt="App Creator Avatar"] {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-}
-
-/* Tambahan agar loading icon Github juga hilang */
-[data-testid="stHeader"] [href*="github.com"] {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
 
 # === Tombol download CSV ===
 csv = df.to_csv(index=False).encode("utf-8")
