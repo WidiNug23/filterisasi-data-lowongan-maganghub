@@ -180,18 +180,42 @@ st.dataframe(
     height=850
 )
 
-# === Sembunyikan tombol GitHub & menu Streamlit ===
-hide_streamlit_style = """
-    <style>
-    [data-testid="stToolbar"] {visibility: hidden !important;}
-    [data-testid="stDecoration"] {visibility: hidden !important;}
-    [data-testid="stStatusWidget"] {visibility: hidden !important;}
-    #MainMenu {visibility: hidden !important;}
-    footer {visibility: hidden !important;}
-    header {visibility: hidden !important;}
-    </style>
-"""
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+# === Sembunyikan toolbar & ubah ke dark mode ===
+# custom_css = """
+#     <style>
+#     [data-testid="stToolbar"] {visibility: hidden !important;}
+#     [data-testid="stDecoration"] {visibility: hidden !important;}
+#     [data-testid="stStatusWidget"] {visibility: hidden !important;}
+#     #MainMenu, header, footer {visibility: hidden !important;}
+
+#     body, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stSidebar"] {
+#         background-color: #0E1117 !important;
+#         color: #FAFAFA !important;
+#     }
+
+#     div[data-testid="stDataFrame"] table {
+#         background-color: #1E1E1E !important;
+#         color: #FAFAFA !important;
+#     }
+
+#     .stMarkdown, .stTextInput label, .stSelectbox label {
+#         color: #FFFFFF !important;
+#     }
+
+#     .stButton>button {
+#         background-color: #00CC66 !important;
+#         color: white !important;
+#         border: none;
+#         border-radius: 5px;
+#     }
+
+#     .stButton>button:hover {
+#         background-color: #00994C !important;
+#     }
+#     </style>
+# """
+# st.markdown(custom_css, unsafe_allow_html=True)
+
 
 # === Tombol download CSV ===
 csv = filtered_df.to_csv(index=False).encode("utf-8")
