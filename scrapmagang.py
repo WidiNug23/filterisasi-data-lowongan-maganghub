@@ -86,7 +86,7 @@ def load_data():
         })
 
     df = pd.DataFrame(records)
-    df.drop_duplicates(subset=["Judul", "Instansi"], inplace=True)
+    df.drop_duplicates(subset=["Lowongan", "Instansi"], inplace=True)
     return df
 
 
