@@ -187,7 +187,7 @@ custom_css = """
     [data-testid="stDecoration"] {visibility: hidden !important;}
     [data-testid="stStatusWidget"] {visibility: hidden !important;}
     #MainMenu, header, footer {visibility: hidden !important;}
-    
+
     [data-testid="stDecoration"] {visibility: hidden !important;}
     [data-testid="stStatusWidget"] {visibility: hidden !important;}
     .stAppDeployButton {display: none !important;}
@@ -219,8 +219,27 @@ custom_css = """
     .stButton>button:hover {
         background-color: #00994C !important;
     }
+
+        /* Hilangkan banner 'Hosted with Streamlit' */
+    [data-testid="stDecoration"] {
+        display: none !important;
+    }
+    [data-testid="stStatusWidget"] {
+        display: none !important;
+    }
+    [data-testid="stStreamlitBadge"] {
+        display: none !important;
+    }
+    footer:has([alt="Streamlit"]) {
+        display: none !important;
+    }
+    /* Pastikan kontainer bawah benar-benar kosong */
+    div[data-testid="stBottomBlockContainer"] {
+        display: none !important;
+    }
     </style>
 """
+
 st.markdown(custom_css, unsafe_allow_html=True)
 
 
