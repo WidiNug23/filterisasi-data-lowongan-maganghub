@@ -1,4 +1,3 @@
-# === FILE: app_maganghub.py ===
 import requests
 import pandas as pd
 import streamlit as st
@@ -82,7 +81,7 @@ def load_data():
             "Jumlah Kuota": kuota,
             "Jumlah Terdaftar": daftar,
             "Peluang Lolos (%)": peluang,
-            "Tanggal Ditambahkan": pd.to_datetime(item.get("created_at", None), errors="coerce")
+            "Tanggal Publikasi": pd.to_datetime(item.get("created_at", None), errors="coerce")
         })
 
     df = pd.DataFrame(records)
@@ -114,8 +113,12 @@ with col3:
 # === Fungsi filter ===
 def apply_filter():
     filtered = df.copy()
+
+    # Filter jenis instansi (bisa tanpa keyword)
     if jenis_filter != "Semua":
         filtered = filtered[filtered["Jenis Instansi"] == jenis_filter]
+
+    # Filter berdasarkan kata kunci jika diisi
     if search.strip():
         filtered = filtered[
             filtered["Instansi"].str.contains(search, case=False, na=False) |
@@ -123,16 +126,15 @@ def apply_filter():
         ]
     return filtered
 
+
 # === Jalankan filter jika tombol diklik atau Enter ditekan ===
 show_count = False
 if cari_btn or search != "":
-    if search.strip():  # jika ada kata kunci
-        st.session_state.filtered_df = apply_filter()
-        show_count = True
-    else:
-        # jika kosong → tampilkan semua data lagi
-        st.session_state.filtered_df = df.copy()
-        show_count = False
+    # Jalankan filter apapun kondisi inputnya
+    st.session_state.filtered_df = apply_filter()
+
+    # Tampilkan jumlah hanya jika user isi keyword
+    show_count = bool(search.strip())
 
 filtered_df = st.session_state.filtered_df
 
@@ -154,11 +156,12 @@ def peluang_label(val):
         warna = "#FF4B4B"  # merah
     return f"<span style='color:{warna}; font-weight:bold;'>{val}%</span>"
 
+
 # === Format data tampil ===
 df_tampil = filtered_df.copy()
-df_tampil["Tanggal Ditambahkan"] = df_tampil["Tanggal Ditambahkan"].dt.strftime("%d %b %Y %H:%M")
+df_tampil["Tanggal Publikasi"] = df_tampil["Tanggal Publikasi"].dt.strftime("%d %b %Y %H:%M")
 
-# === Konfigurasi kolom dengan warna angka HTML ===
+# === Tabel tampil ===
 st.dataframe(
     df_tampil.style.format({
         "Peluang Lolos (%)": lambda x: f"{x}%" if pd.notna(x) else "-"
