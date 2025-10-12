@@ -82,7 +82,7 @@ def load_data():
             "Jumlah Kuota": kuota,
             "Jumlah Terdaftar": daftar,
             "Peluang Lolos (%)": peluang,
-            "Tanggal Publikasi": pd.to_datetime(item.get("created_at", None), errors="coerce")
+            "Tanggal Ditambahkan": pd.to_datetime(item.get("created_at", None), errors="coerce")
         })
 
     df = pd.DataFrame(records)
