@@ -199,85 +199,59 @@ st.dataframe(
 
 # === Sembunyikan toolbar & ubah ke dark mode ===
 custom_css = """
-    <style>
-    [data-testid="stToolbar"] {visibility: hidden !important;}
-    [data-testid="stDecoration"] {visibility: hidden !important;}
-    [data-testid="stStatusWidget"] {visibility: hidden !important;}
-    #MainMenu, header, footer {visibility: hidden !important;}
+<style>
+/* === Hilangkan semua elemen toolbar (desktop & mobile) === */
+[data-testid="stToolbar"],
+div[class*="stToolbar"],
+button[title="View app source"],
+a[href*="github.com/streamlit"],
+a[href*="share.streamlit.io"],
+header [data-testid="stToolbarActions"],
+header [role="button"][aria-label*="settings"],
+header div[role="button"],
+header svg,
+header button {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
 
-    [data-testid="stDecoration"] {visibility: hidden !important;}
-    [data-testid="stStatusWidget"] {visibility: hidden !important;}
-    .stAppDeployButton {display: none !important;}
-    [data-testid="stStreamlitBadge"] {visibility: hidden !important;}
-    footer:has([alt="Streamlit"]) {display: none !important;}
-    div[data-testid="stBottomBlockContainer"] {visibility: hidden !important;}
+/* Hilangkan ikon profil dan elemen bawah */
+div[class*="_profilePreview_"],
+div[data-testid="appCreatorAvatar"],
+a[href*="share.streamlit.io/user/"],
+img[alt="App Creator Avatar"],
+div[data-testid="stBottomBlockContainer"],
+[data-testid="stDecoration"],
+[data-testid="stStatusWidget"],
+[data-testid="stStreamlitBadge"],
+footer:has([alt="Streamlit"]),
+footer {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
 
-    body, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stSidebar"] {
-        background-color: #0E1117 !important;
-        color: #FAFAFA !important;
-    }
+/* Pastikan dark mode */
+body, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stSidebar"] {
+    background-color: #0E1117 !important;
+    color: #FAFAFA !important;
+}
 
-    div[data-testid="stDataFrame"] table {
-        background-color: #1E1E1E !important;
-        color: #FAFAFA !important;
-    }
-
-    .stMarkdown, .stTextInput label, .stSelectbox label {
-        color: #FFFFFF !important;
-    }
-
-    .stButton>button {
-        background-color: #00CC66 !important;
-        color: white !important;
-        border: none;
-        border-radius: 5px;
-    }
-
-    .stButton>button:hover {
-        background-color: #00994C !important;
-    }
-
-        /* Hilangkan banner 'Hosted with Streamlit' */
-    [data-testid="stDecoration"] {
-        display: none !important;
-    }
-    [data-testid="stStatusWidget"] {
-        display: none !important;
-    }
-    [data-testid="stStreamlitBadge"] {
-        display: none !important;
-    }
-    footer:has([alt="Streamlit"]) {
-        display: none !important;
-    }
-    /* Pastikan kontainer bawah benar-benar kosong */
-    div[data-testid="stBottomBlockContainer"] {
-        display: none !important;
-    }
-
-    /* Hilangkan avatar profil Streamlit (pojok kanan bawah) */
-    div[class*="_profilePreview_"],
-    div[data-testid="appCreatorAvatar"],
-    a[href*="share.streamlit.io/user/"],
-    img[alt="App Creator Avatar"] {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-    }
-
-    /* Jika container bawah masih menyisakan ruang */
-    div[data-testid="stBottomBlockContainer"] {
-        display: none !important;
-    }
-    </style>
+/* Style tombol dan teks tetap seperti semula */
+.stButton>button {
+    background-color: #00CC66 !important;
+    color: white !important;
+    border: none;
+    border-radius: 5px;
+}
+.stButton>button:hover {
+    background-color: #00994C !important;
+}
+</style>
 """
-
-st.markdown("""
-    <style>
-    #MainMenu, footer, header {visibility: hidden !important;}
-    </style>
-""", unsafe_allow_html=True)
-
+st.markdown(custom_css, unsafe_allow_html=True)
 
 # === Tombol download CSV ===
 csv = df.to_csv(index=False).encode("utf-8")
