@@ -180,6 +180,19 @@ st.dataframe(
     height=850
 )
 
+# === Sembunyikan tombol GitHub & menu Streamlit ===
+hide_streamlit_style = """
+    <style>
+    [data-testid="stToolbar"] {visibility: hidden !important;}
+    [data-testid="stDecoration"] {visibility: hidden !important;}
+    [data-testid="stStatusWidget"] {visibility: hidden !important;}
+    #MainMenu {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
+    header {visibility: hidden !important;}
+    </style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 # === Tombol download CSV ===
 csv = filtered_df.to_csv(index=False).encode("utf-8")
 st.download_button(
