@@ -9,12 +9,12 @@ st.set_page_config(page_title="Filterisasi Lowongan Magang", layout="wide")
 st.title("Sistem Filterisasi Lowongan MagangHub")
 
 BASE_URL = "https://maganghub.kemnaker.go.id/be/v1/api/list/vacancies-aktif"
+PRODI_URL = "https://maganghub.kemnaker.go.id/be/v1/api/list/prodi"
 LIMIT = 100  # batas per halaman dari API
 
-# === CSS global untuk sembunyikan semua icon GitHub & Streamlit sejak loading ===
+# === CSS global untuk sembunyikan semua icon Streamlit & GitHub ===
 st.markdown("""
 <style>
-/* sembunyikan semua elemen Streamlit, toolbar, badge, footer, header */
 #MainMenu, header, footer, [data-testid="stToolbar"], [data-testid="stDecoration"], 
 [data-testid="stStatusWidget"], [data-testid="stStreamlitBadge"], 
 .stAppDeployButton, div[data-testid="stBottomBlockContainer"],
@@ -22,10 +22,6 @@ div[class*="_profilePreview_"], div[data-testid="appCreatorAvatar"],
 a[href*="share.streamlit.io/user/"], img[alt="App Creator Avatar"],
 [data-testid="stHeader"] [href*="github.com"] {
     display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    position: fixed !important;
-    z-index: -999 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -38,6 +34,20 @@ def load_model():
     return model, vectorizer
 
 model, vectorizer = load_model()
+
+# === Ambil daftar program studi ===
+@st.cache_data
+def ambil_daftar_prodi():
+    try:
+        res = requests.get(PRODI_URL, timeout=10)
+        res.raise_for_status()
+        data = res.json().get("data", [])
+        return {item["id"]: item["nama"] for item in data if "id" in item and "nama" in item}
+    except Exception as e:
+        st.warning(f"⚠️ Gagal memuat daftar prodi: {e}")
+        return {}
+
+prodi_map = ambil_daftar_prodi()
 
 # === Fungsi ambil data API ===
 def ambil_data_api():
@@ -91,8 +101,18 @@ def load_data():
         daftar = item.get("jumlah_terdaftar", 0)
         peluang = 100 if daftar == 0 else min(round((kuota / (daftar + 1)) * 100), 100)
 
+        # === Ambil program studi (kalau ada id_prodi) ===
+        id_prodi = (
+            item.get("id_prodi")
+            or item.get("prodi_id")
+            or item.get("id_jurusan")
+            or None
+        )
+        nama_prodi = prodi_map.get(id_prodi, "-")
+
         records.append({
             "Lowongan": item.get("posisi", ""),
+            "Program Studi": nama_prodi,
             "Instansi": nama,
             "Jenis Instansi": jenis_pred,
             "Lokasi": f"{perusahaan.get('nama_kabupaten', '')}, {perusahaan.get('nama_provinsi', '')}",
@@ -106,7 +126,7 @@ def load_data():
     df.drop_duplicates(subset=["Lowongan", "Instansi"], inplace=True)
     return df
 
-# === Load data utama sekali saja ===
+# === Load data utama ===
 if "df" not in st.session_state:
     with st.spinner("Memuat data dari MagangHub..."):
         st.session_state.df = load_data()
@@ -124,7 +144,7 @@ if "filtered_df" not in st.session_state:
 # === Filter input ===
 col1, col2, col3 = st.columns([2, 2, 1])
 with col1:
-    search = st.text_input("🔍 Masukkan kata kunci (Instansi/Posisi Lowongan/Lokasi)", key="search")
+    search = st.text_input("🔍 Masukkan kata kunci (Instansi/Posisi/Program Studi/Lokasi)", key="search")
 with col2:
     jenis_filter = st.selectbox("🏢 Jenis Instansi", ["Semua", "Negeri", "Swasta"], key="jenis")
 with col3:
@@ -140,6 +160,7 @@ def apply_filter():
         filtered = filtered[
             filtered["Instansi"].str.contains(search, case=False, na=False) |
             filtered["Lowongan"].str.contains(search, case=False, na=False) |
+            filtered["Program Studi"].str.contains(search, case=False, na=False) |
             filtered["Lokasi"].str.contains(search, case=False, na=False)
         ]
     return filtered
@@ -152,56 +173,25 @@ if cari_btn or search != "":
 
 filtered_df = st.session_state.filtered_df
 
-# === Tampilkan jumlah hasil hanya jika ada kata kunci ===
+# === Tampilkan jumlah hasil ===
 if show_count:
     st.markdown(f"📄 Menampilkan **{len(filtered_df):,}** hasil pencarian.")
 
-# === Format tabel & pewarnaan peluang ===
-def peluang_label(val):
-    if pd.isna(val):
-        return ""
-    if val >= 75:
-        warna = "#00CC66"
-    elif val >= 50:
-        warna = "#FFD700"
-    elif val >= 25:
-        warna = "#FF9900"
-    else:
-        warna = "#FF4B4B"
-    return f"<span style='color:{warna}; font-weight:bold;'>{val}%</span>"
-
+# === Format tabel ===
 df_tampil = filtered_df.copy()
 df_tampil["Tanggal Publikasi"] = df_tampil["Tanggal Publikasi"].dt.strftime("%d %b %Y %H:%M")
 df_tampil.rename(columns={"Jenis Instansi": "* Jenis Instansi"}, inplace=True)
 
-st.markdown(
-    """
-    <p style='color:#AAAAAA; font-size:13px; font-style:italic; text-align:left; margin-top:-10px; margin-bottom:10px;'>
-    * data jenis instansi masih dalam tahap training dan pengembangan
-    </p>
-    """,
-    unsafe_allow_html=True
-)
-
 st.dataframe(
     df_tampil.style.format({
         "Peluang Lolos (%)": lambda x: f"{x}%" if pd.notna(x) else "-"
-    }).apply(
-        lambda s: [
-            "color: #00CC66; font-weight:bold;" if v >= 75 else
-            "color: #FFD700; font-weight:bold;" if v >= 50 else
-            "color: #FF9900; font-weight:bold;" if v >= 25 else
-            "color: #FF4B4B; font-weight:bold;" if pd.notna(v) else ""
-            for v in s
-        ],
-        subset=["Peluang Lolos (%)"]
-    ),
+    }),
     use_container_width=True,
     height=850
 )
 
 # === Tombol download CSV ===
-csv = df.to_csv(index=False).encode("utf-8")
+csv = df_tampil.to_csv(index=False).encode("utf-8")
 st.download_button(
     "💾 Download Hasil CSV",
     data=csv,
