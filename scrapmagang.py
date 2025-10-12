@@ -91,11 +91,11 @@ def load_data():
 
 
 # === Load data utama ===
-with st.spinner("🔄 Memuat data dari API..."):
+with st.spinner("🔄 Memuat data dari MagangHub..."):
     df = load_data()
 
 if df.empty:
-    st.warning("⚠️ Tidak ada data ditemukan dari API.")
+    st.warning("⚠️ Tidak ada data yang ditemukan.")
     st.stop()
 
 # === Inisialisasi session_state ===
@@ -105,7 +105,7 @@ if "filtered_df" not in st.session_state:
 # === Filter Input ===
 col1, col2, col3 = st.columns([2, 2, 1])
 with col1:
-    search = st.text_input("🔍 Masukkan kata kunci (Instansi / Posisi)", key="search")
+    search = st.text_input("🔍 Masukkan kata kunci (Instansi / Posisi Lowongan)", key="search")
 with col2:
     jenis_filter = st.selectbox("🏢 Jenis Instansi", ["Semua", "Negeri", "Swasta"], key="jenis")
 with col3:
@@ -138,7 +138,7 @@ filtered_df = st.session_state.filtered_df
 
 # === Tampilkan jumlah hasil hanya jika ada kata kunci ===
 if show_count:
-    st.markdown(f"📄 Menampilkan **{len(filtered_df):,}** lowongan hasil filterisasi.")
+    st.markdown(f"📄 Menampilkan **{len(filtered_df):,}** hasil pencarian.")
 
 # === Pewarnaan angka peluang ===
 def peluang_label(val):
