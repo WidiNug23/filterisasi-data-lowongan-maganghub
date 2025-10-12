@@ -1,166 +1,186 @@
+# === FILE: app_maganghub.py ===
 import requests
 import pandas as pd
 import streamlit as st
-import time, re, joblib, os
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.ensemble import RandomForestClassifier
-from datetime import datetime
+import joblib
+import time
 
-# =====================
-# KONFIGURASI DASAR
-# =====================
+# === Konfigurasi dasar ===
+st.set_page_config(page_title="Filterisasi Lowongan Magang", layout="wide")
+st.title("🎯 Sistem Analisis Lowongan MagangHub")
+
 BASE_URL = "https://maganghub.kemnaker.go.id/be/v1/api/list/vacancies-aktif"
-LIMIT = 100
-MAX_PAGE = 30
-MODEL_PATH = "model_maganghub.pkl"
-VECTORIZER_PATH = "vectorizer_maganghub.pkl"
+LIMIT = 100  # batas per halaman dari API
 
-# =====================
-# THEME DAN PAGE CONFIG
-# =====================
-st.set_page_config(
-    page_title="Filterisasi Lowongan Magang",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-st.title("Sistem Analisis Lowongan MagangHub")
+# === Load model dan vectorizer ===
+@st.cache_resource
+def load_model():
+    model = joblib.load("model_maganghub.pkl")
+    vectorizer = joblib.load("vectorizer_maganghub.pkl")
+    return model, vectorizer
 
-# =====================
-# FUNGSI AMBIL DATA API
-# =====================
+model, vectorizer = load_model()
+
+
+# === Ambil semua data API tanpa batas halaman ===
 def ambil_data_api():
     all_data = []
-    progress_bar = st.progress(0)
-    status_text = st.empty()
+    page = 1
+    status = st.empty()
+    progress = st.progress(0)
 
-    for page in range(1, MAX_PAGE + 1):
+    while True:
         url = f"{BASE_URL}?page={page}&limit={LIMIT}"
         try:
-            response = requests.get(url, timeout=5)
-            response.raise_for_status()
-        except requests.RequestException as e:
-            st.error(f"Gagal ambil data di halaman {page}: {e}")
+            res = requests.get(url, timeout=10)
+            res.raise_for_status()
+        except Exception as e:
+            st.error(f"⚠️ Gagal ambil data halaman {page}: {e}")
             break
 
-        json_data = response.json()
-        data = json_data.get("data", [])
+        data = res.json().get("data", [])
         if not data:
-            break
+            break  # berhenti jika halaman kosong
 
         all_data.extend(data)
-        status_text.text(f"✅ Halaman {page} — {len(data)} data diambil")
-        progress_bar.progress(page / MAX_PAGE)
-        time.sleep(0.1)
+        status.text(f"📄 Mengambil halaman {page} ({len(data)} data)... Total: {len(all_data)}")
+        progress.progress(min(page * LIMIT / 2500, 1.0))  # estimasi total data ±2500
+        page += 1
+        time.sleep(0.05)
 
-    status_text.text("✅ Pengambilan data selesai!")
-    progress_bar.empty()
+    progress.empty()
+    status.text(f"✅ Selesai! Total data diperoleh: {len(all_data):,}")
     return all_data
 
-# =====================
-# LOGIKA LABEL OTOMATIS
-# =====================
-def label_otomatis(nama, alamat, deskripsi):
-    text = f"{nama} {alamat} {deskripsi}".lower()
-    if re.search(r"\b(kementerian|dinas|badan|lembaga|sekretariat|pemerintah|provinsi|kabupaten|universitas negeri|politeknik negeri|bank rakyat indonesia)\b", text):
-        return "Pemerintah / Negeri"
-    elif re.search(r"\b(pt|cv)\b", text) and re.search(r"\b(alfa|astra|indofood|unilever|mustika|midi|bank|finance|group|holding|retail|industri|corporate|international|mining|energy|technology|chemical|indonesia)\b", text):
-        return "Swasta Besar"
-    elif "pt" in text or "cv" in text:
-        return "Swasta Kecil"
-    else:
-        return "Lainnya"
 
-# =====================
-# LOAD DATA OTOMATIS
-# =====================
-
+# === Fungsi muat dan olah data ===
 @st.cache_data(show_spinner=False)
 def load_data():
-    all_data = ambil_data_api()
-    if not all_data:
-        return pd.DataFrame()
-
-    # Load model jika ada
-    model, vectorizer = None, None
-    if os.path.exists(MODEL_PATH) and os.path.exists(VECTORIZER_PATH):
-        model = joblib.load(MODEL_PATH)
-        vectorizer = joblib.load(VECTORIZER_PATH)
-
+    data = ambil_data_api()
     records = []
-    texts = [f"{item.get('perusahaan', {}).get('nama_perusahaan','')} "
-             f"{item.get('perusahaan', {}).get('alamat','')} "
-             f"{item.get('perusahaan', {}).get('deskripsi_perusahaan','')}"
-             for item in all_data]
+    for item in data:
+        perusahaan = item.get("perusahaan", {}) or {}
+        nama = perusahaan.get("nama_perusahaan", "")
+        alamat = perusahaan.get("alamat", "")
+        deskripsi = perusahaan.get("deskripsi_perusahaan", "")
+        teks = f"{nama} {alamat} {deskripsi}"
 
-    # Prediksi batch
-    if model and vectorizer:
-        X_text = vectorizer.transform(texts)
-        predictions = model.predict(X_text)
-    else:
-        predictions = [label_otomatis(
-            f"{item.get('perusahaan', {}).get('nama_perusahaan','')}",
-            f"{item.get('perusahaan', {}).get('alamat','')}",
-            f"{item.get('perusahaan', {}).get('deskripsi_perusahaan','')}")
-            for item in all_data]
+        # Prediksi jenis instansi (Negeri / Swasta)
+        jenis_pred = model.predict(vectorizer.transform([teks]))[0]
+        if jenis_pred not in ["Negeri", "Swasta"]:
+            jenis_pred = "Swasta"
 
-    for item, jenis in zip(all_data, predictions):
-        perusahaan = item.get("perusahaan", {})
-        jadwal = item.get("jadwal", {})
-        created_at = item.get("created_at", item.get("tanggal_mulai"))
-        try:
-            created_at_dt = pd.to_datetime(created_at)
-        except:
-            created_at_dt = pd.NaT
+        kuota = item.get("jumlah_kuota", 0)
+        daftar = item.get("jumlah_terdaftar", 0)
+        peluang = 100 if daftar == 0 else min(round((kuota / (daftar + 1)) * 100), 100)
 
         records.append({
             "Judul": item.get("posisi", ""),
-            "Instansi": perusahaan.get("nama_perusahaan", ""),
+            "Instansi": nama,
+            "Jenis Instansi": jenis_pred,
             "Lokasi": f"{perusahaan.get('nama_kabupaten', '')}, {perusahaan.get('nama_provinsi', '')}",
-            "Tanggal Mulai": jadwal.get("tanggal_mulai", ""),
-            "Tanggal Selesai": jadwal.get("tanggal_selesai", ""),
-            "Jumlah Kuota": item.get("jumlah_kuota", ""),
-            "Jumlah Terdaftar": item.get("jumlah_terdaftar", ""),
-            "Status": item.get("ref_status_posisi", {}).get("nama_status_posisi", ""),
-            "Jenis Instansi": jenis,
-            "Tanggal Ditambahkan": created_at_dt,
-            "Banner": perusahaan.get("banner", ""),
+            "Jumlah Kuota": kuota,
+            "Jumlah Terdaftar": daftar,
+            "Peluang Lolos (%)": peluang,
+            "Tanggal Ditambahkan": pd.to_datetime(item.get("created_at", None), errors="coerce")
         })
 
     df = pd.DataFrame(records)
-    df.sort_values(by="Tanggal Ditambahkan", ascending=False, inplace=True)
+    df.drop_duplicates(subset=["Judul", "Instansi"], inplace=True)
     return df
 
-df = load_data()
 
-# =====================
-# TAMPILKAN DATA
-# =====================
+# === Load data utama ===
+with st.spinner("🔄 Memuat data dari API..."):
+    df = load_data()
+
 if df.empty:
-    st.warning("⚠️ Tidak ada data lowongan yang tersedia.")
-else:
-    st.subheader("📊 Data Lowongan Magang")
-    
-    # Sidebar filter
-    jenis_filter = st.sidebar.selectbox("Filter Jenis Instansi", ["Semua"] + sorted(df["Jenis Instansi"].unique().tolist()))
+    st.warning("⚠️ Tidak ada data ditemukan dari API.")
+    st.stop()
+
+# === Inisialisasi session_state ===
+if "filtered_df" not in st.session_state:
+    st.session_state.filtered_df = df.copy()
+
+# === Filter Input ===
+col1, col2, col3 = st.columns([2, 2, 1])
+with col1:
+    search = st.text_input("🔍 Masukkan kata kunci (Instansi / Posisi)", key="search")
+with col2:
+    jenis_filter = st.selectbox("🏢 Jenis Instansi", ["Semua", "Negeri", "Swasta"], key="jenis")
+with col3:
+    cari_btn = st.button("🔎 Cari")
+
+# === Fungsi filter ===
+def apply_filter():
+    filtered = df.copy()
     if jenis_filter != "Semua":
-        df = df[df["Jenis Instansi"] == jenis_filter]
+        filtered = filtered[filtered["Jenis Instansi"] == jenis_filter]
+    if search.strip():
+        filtered = filtered[
+            filtered["Instansi"].str.contains(search, case=False, na=False) |
+            filtered["Judul"].str.contains(search, case=False, na=False)
+        ]
+    return filtered
 
-    search = st.sidebar.text_input("Cari Instansi atau Posisi")
-    if search:
-        df = df[df["Instansi"].str.contains(search, case=False, na=False) |
-                df["Judul"].str.contains(search, case=False, na=False)]
+# === Jalankan filter jika tombol diklik atau Enter ditekan ===
+show_count = False
+if cari_btn or search != "":
+    if search.strip():  # jika ada kata kunci
+        st.session_state.filtered_df = apply_filter()
+        show_count = True
+    else:
+        # jika kosong → tampilkan semua data lagi
+        st.session_state.filtered_df = df.copy()
+        show_count = False
 
-    st.write(f"Menampilkan {len(df)} data dari total {len(df)} lowongan.")
-    st.dataframe(df, use_container_width=True)
+filtered_df = st.session_state.filtered_df
 
-    # st.subheader("🖼️ Contoh Banner Perusahaan")
-    # for _, row in df.head(3).iterrows():
-    #     st.markdown(f"**{row['Instansi']}** — {row['Judul']} — {row['Tanggal Ditambahkan']}")
-    #     if row["Banner"]:
-    #         st.image(row["Banner"], width=400)
-    #     else:
-    #         st.write("_Tidak ada banner tersedia_")
+# === Tampilkan jumlah hasil hanya jika ada kata kunci ===
+if show_count:
+    st.markdown(f"📄 Menampilkan **{len(filtered_df):,}** lowongan hasil filterisasi.")
 
-    # Tombol download
-    csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button("💾 Download CSV", data=csv, file_name="lowongan_maganghub.csv", mime="text/csv")
+# === Pewarnaan angka peluang ===
+def peluang_label(val):
+    if pd.isna(val):
+        return ""
+    if val >= 75:
+        warna = "#00CC66"  # hijau
+    elif val >= 50:
+        warna = "#FFD700"  # kuning
+    elif val >= 25:
+        warna = "#FF9900"  # oranye
+    else:
+        warna = "#FF4B4B"  # merah
+    return f"<span style='color:{warna}; font-weight:bold;'>{val}%</span>"
+
+# === Format data tampil ===
+df_tampil = filtered_df.copy()
+df_tampil["Tanggal Ditambahkan"] = df_tampil["Tanggal Ditambahkan"].dt.strftime("%d %b %Y %H:%M")
+
+# === Konfigurasi kolom dengan warna angka HTML ===
+st.dataframe(
+    df_tampil.style.format({
+        "Peluang Lolos (%)": lambda x: f"{x}%" if pd.notna(x) else "-"
+    }).apply(
+        lambda s: [
+            "color: #00CC66; font-weight:bold;" if v >= 75 else
+            "color: #FFD700; font-weight:bold;" if v >= 50 else
+            "color: #FF9900; font-weight:bold;" if v >= 25 else
+            "color: #FF4B4B; font-weight:bold;" if pd.notna(v) else ""
+            for v in s
+        ],
+        subset=["Peluang Lolos (%)"]
+    ),
+    use_container_width=True,
+    height=850
+)
+
+# === Tombol download CSV ===
+csv = filtered_df.to_csv(index=False).encode("utf-8")
+st.download_button(
+    "💾 Download Hasil CSV",
+    data=csv,
+    file_name=f"lowongan_maganghub_{int(time.time())}.csv",
+    mime="text/csv"
+)
