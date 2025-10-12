@@ -6,7 +6,7 @@ import time
 
 # === Konfigurasi dasar ===
 st.set_page_config(page_title="Filterisasi Lowongan Magang", layout="wide")
-st.title("🎯 Sistem Analisis Lowongan MagangHub")
+st.title("🎯 Sistem Filterisasi Lowongan MagangHub")
 
 BASE_URL = "https://maganghub.kemnaker.go.id/be/v1/api/list/vacancies-aktif"
 LIMIT = 100  # batas per halaman dari API
