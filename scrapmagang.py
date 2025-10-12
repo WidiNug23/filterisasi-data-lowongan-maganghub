@@ -168,7 +168,7 @@ df_tampil.rename(columns={"Jenis Instansi": "* Jenis Instansi"}, inplace=True)
 # === Tampilkan keterangan di atas tabel ===
 st.markdown(
     """
-    <p style='color:#AAAAAA; font-size:13px; font-style:italic; text-align:center; margin-top:-10px; margin-bottom:10px;'>
+    <p style='color:#AAAAAA; font-size:13px; font-style:italic; text-align:left; margin-top:-10px; margin-bottom:10px;'>
     * data jenis instansi masih dalam tahap training dan pengembangan
     </p>
     """,
