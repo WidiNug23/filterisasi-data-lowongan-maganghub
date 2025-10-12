@@ -42,7 +42,7 @@ def ambil_data_api():
             break
 
         all_data.extend(data)
-        status.text(f"📄 Mengambil halaman {page} ({len(data)} data)... Total: {len(all_data)}")
+        status.text(f"📄 Mengambil halaman {page} ({len(data)} data)... Total: {len(all_data)} lowongan")
         progress.progress(min(page * LIMIT / 3000, 1.0))
         page += 1
         time.sleep(0.05)
@@ -50,7 +50,7 @@ def ambil_data_api():
     # bersihkan progress bar
     progress.empty()
     # tampilkan teks akhir baru (tanpa cache efek)
-    final_text = f"📊 Diperoleh {format(len(all_data), ',').replace(',', '.')} lowongan"
+    final_text = f"Diperoleh {format(len(all_data), ',').replace(',', '.')} lowongan"
     status.text(final_text)
     st.session_state["last_status"] = final_text  # pastikan teks tetap tersimpan di sesi
 
