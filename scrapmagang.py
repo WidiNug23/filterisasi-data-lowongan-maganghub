@@ -162,6 +162,19 @@ def peluang_label(val):
 df_tampil = filtered_df.copy()
 df_tampil["Tanggal Publikasi"] = df_tampil["Tanggal Publikasi"].dt.strftime("%d %b %Y %H:%M")
 
+# Tambahkan simbol bintang di header kolom Jenis Instansi
+df_tampil.rename(columns={"Jenis Instansi": "⭐ Jenis Instansi"}, inplace=True)
+
+# === Tampilkan catatan di atas tabel ===
+st.markdown(
+    """
+    <div style='color:#FFD700; font-style:italic; margin-bottom:10px;'>
+        * data jenis instansi masih dalam tahap training dan pengembangan
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 # === Tabel tampil ===
 st.dataframe(
     df_tampil.style.format({
