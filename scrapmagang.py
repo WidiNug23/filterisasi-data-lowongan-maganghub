@@ -48,7 +48,7 @@ def ambil_data_api():
         time.sleep(0.05)
 
     progress.empty()
-    status.text(f"✅ Total data diperoleh: {len(all_data):,}")
+    status.text(f"{len(all_data):,}")
     return all_data
 
 
