@@ -22,7 +22,7 @@ model, vectorizer = load_model()
 
 
 # === Ambil semua data API tanpa batas halaman ===
-def ambil_data_api(_force_refresh=time.time()):
+def ambil_data_api():
     all_data = []
     page = 1
     status = st.empty()
@@ -39,16 +39,21 @@ def ambil_data_api(_force_refresh=time.time()):
 
         data = res.json().get("data", [])
         if not data:
-            break  # berhenti jika halaman kosong
+            break
 
         all_data.extend(data)
         status.text(f"📄 Mengambil halaman {page} ({len(data)} data)... Total: {len(all_data)}")
-        progress.progress(min(page * LIMIT / 3000, 1.0))  # estimasi total data ±2500
+        progress.progress(min(page * LIMIT / 3000, 1.0))
         page += 1
         time.sleep(0.05)
 
+    # bersihkan progress bar
     progress.empty()
-    status.text(f"📊 Diperoleh {len(all_data):,}".replace(",", ".") + " lowongan")
+    # tampilkan teks akhir baru (tanpa cache efek)
+    final_text = f"📊 Diperoleh {format(len(all_data), ',').replace(',', '.')} lowongan"
+    status.text(final_text)
+    st.session_state["last_status"] = final_text  # pastikan teks tetap tersimpan di sesi
+
     return all_data
 
 
