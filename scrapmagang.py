@@ -240,7 +240,11 @@ custom_css = """
     </style>
 """
 
-st.markdown(custom_css, unsafe_allow_html=True)
+st.markdown("""
+    <style>
+    #MainMenu, footer, header {visibility: hidden !important;}
+    </style>
+""", unsafe_allow_html=True)
 
 
 # === Tombol download CSV ===
