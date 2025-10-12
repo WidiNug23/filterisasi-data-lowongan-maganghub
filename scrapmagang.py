@@ -276,7 +276,7 @@ st.markdown("""
 
 
 # === Tombol download CSV ===
-csv = filtered_df.to_csv(index=False).encode("utf-8")
+csv = df.to_csv(index=False).encode("utf-8")
 st.download_button(
     "💾 Download Hasil CSV",
     data=csv,
