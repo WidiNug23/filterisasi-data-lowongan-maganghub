@@ -43,7 +43,7 @@ def ambil_data_api():
 
         all_data.extend(data)
         status.text(f"📄 Mengambil halaman {page} ({len(data)} data)... Total: {len(all_data)}")
-        progress.progress(min(page * LIMIT / 2500, 1.0))  # estimasi total data ±2500
+        progress.progress(min(page * LIMIT / 3000, 1.0))  # estimasi total data ±2500
         page += 1
         time.sleep(0.05)
 
