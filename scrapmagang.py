@@ -94,7 +94,7 @@ def load_data():
 
 
 # === Load data utama ===
-with st.spinner("🔄 Memuat data dari MagangHub..."):
+with st.spinner("Memuat data dari MagangHub..."):
     df = load_data()
 
 if df.empty:
