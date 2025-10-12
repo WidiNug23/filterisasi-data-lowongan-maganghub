@@ -48,7 +48,7 @@ def ambil_data_api():
         time.sleep(0.05)
 
     progress.empty()
-    # status.text(f"✅ Total data diperoleh: {len(all_data):,}")
+    status.text(f"📊 Diperoleh {len(all_data):,}".replace(",", ".") + " lowongan")
     return all_data
 
 
