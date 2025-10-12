@@ -104,7 +104,7 @@ if "filtered_df" not in st.session_state:
 # === Filter Input ===
 col1, col2, col3 = st.columns([2, 2, 1])
 with col1:
-    search = st.text_input("🔍 Masukkan kata kunci (Instansi / Posisi Lowongan)", key="search")
+    search = st.text_input("🔍 Masukkan kata kunci (Instansi/Posisi Lowongan/Lokasi)", key="search")
 with col2:
     jenis_filter = st.selectbox("🏢 Jenis Instansi", ["Semua", "Negeri", "Swasta"], key="jenis")
 with col3:
@@ -122,7 +122,8 @@ def apply_filter():
     if search.strip():
         filtered = filtered[
             filtered["Instansi"].str.contains(search, case=False, na=False) |
-            filtered["Lowongan"].str.contains(search, case=False, na=False)
+            filtered["Lowongan"].str.contains(search, case=False, na=False) |
+            filtered["Lokasi"].str.contains(search, case=False, na=False)
         ]
     return filtered
 
