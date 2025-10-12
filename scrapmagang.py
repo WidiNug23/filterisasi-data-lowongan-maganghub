@@ -3,6 +3,7 @@ import pandas as pd
 import streamlit as st
 import joblib
 import time
+import json
 
 # === Konfigurasi dasar ===
 st.set_page_config(page_title="Filterisasi Lowongan Magang", layout="wide")
@@ -11,10 +12,9 @@ st.title("Sistem Filterisasi Lowongan MagangHub")
 BASE_URL = "https://maganghub.kemnaker.go.id/be/v1/api/list/vacancies-aktif"
 LIMIT = 100  # batas per halaman dari API
 
-# === CSS global untuk sembunyikan semua icon GitHub & Streamlit sejak loading ===
+# === CSS global ===
 st.markdown("""
 <style>
-/* sembunyikan semua elemen Streamlit, toolbar, badge, footer, header */
 #MainMenu, header, footer, [data-testid="stToolbar"], [data-testid="stDecoration"], 
 [data-testid="stStatusWidget"], [data-testid="stStreamlitBadge"], 
 .stAppDeployButton, div[data-testid="stBottomBlockContainer"],
@@ -91,10 +91,34 @@ def load_data():
         daftar = item.get("jumlah_terdaftar", 0)
         peluang = 100 if daftar == 0 else min(round((kuota / (daftar + 1)) * 100), 100)
 
+        # === Parsing program studi ===
+        prog_studi_raw = item.get("program_studi")
+        if prog_studi_raw:
+            try:
+                prog_list = json.loads(prog_studi_raw)
+                program_studi = ", ".join([p.get("title", "").strip() for p in prog_list if p.get("title")])
+            except Exception:
+                program_studi = ""
+        else:
+            program_studi = ""
+
+        # === Parsing jenjang ===
+        jenjang_raw = item.get("jenjang")
+        if jenjang_raw:
+            try:
+                jenjang_list = json.loads(jenjang_raw)
+                jenjang = ", ".join([j.get("title", "").strip() for j in jenjang_list if j.get("title")])
+            except Exception:
+                jenjang = ""
+        else:
+            jenjang = ""
+
         records.append({
             "Lowongan": item.get("posisi", ""),
             "Instansi": nama,
             "Jenis Instansi": jenis_pred,
+            "Program Studi": program_studi,
+            "Jenjang": jenjang,
             "Lokasi": f"{perusahaan.get('nama_kabupaten', '')}, {perusahaan.get('nama_provinsi', '')}",
             "Jumlah Kuota": kuota,
             "Jumlah Terdaftar": daftar,
@@ -106,7 +130,7 @@ def load_data():
     df.drop_duplicates(subset=["Lowongan", "Instansi"], inplace=True)
     return df
 
-# === Load data utama sekali saja ===
+# === Load data utama ===
 if "df" not in st.session_state:
     with st.spinner("Memuat data dari MagangHub..."):
         st.session_state.df = load_data()
@@ -124,7 +148,7 @@ if "filtered_df" not in st.session_state:
 # === Filter input ===
 col1, col2, col3 = st.columns([2, 2, 1])
 with col1:
-    search = st.text_input("🔍 Masukkan kata kunci (Instansi/Posisi Lowongan/Lokasi)", key="search")
+    search = st.text_input("🔍 Masukkan kata kunci (Instansi/Posisi/Lokasi/Program Studi/Jenjang)", key="search")
 with col2:
     jenis_filter = st.selectbox("🏢 Jenis Instansi", ["Semua", "Negeri", "Swasta"], key="jenis")
 with col3:
@@ -140,7 +164,9 @@ def apply_filter():
         filtered = filtered[
             filtered["Instansi"].str.contains(search, case=False, na=False) |
             filtered["Lowongan"].str.contains(search, case=False, na=False) |
-            filtered["Lokasi"].str.contains(search, case=False, na=False)
+            filtered["Lokasi"].str.contains(search, case=False, na=False) |
+            filtered["Program Studi"].str.contains(search, case=False, na=False) |
+            filtered["Jenjang"].str.contains(search, case=False, na=False)
         ]
     return filtered
 
@@ -152,11 +178,11 @@ if cari_btn or search != "":
 
 filtered_df = st.session_state.filtered_df
 
-# === Tampilkan jumlah hasil hanya jika ada kata kunci ===
+# === Jumlah hasil ===
 if show_count:
     st.markdown(f"📄 Menampilkan **{len(filtered_df):,}** hasil pencarian.")
 
-# === Format tabel & pewarnaan peluang ===
+# === Pewarnaan peluang ===
 def peluang_label(val):
     if pd.isna(val):
         return ""
@@ -183,6 +209,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# === Tabel utama ===
 st.dataframe(
     df_tampil.style.format({
         "Peluang Lolos (%)": lambda x: f"{x}%" if pd.notna(x) else "-"
