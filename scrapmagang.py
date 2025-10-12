@@ -82,7 +82,7 @@ def load_data():
             "Jumlah Kuota": kuota,
             "Jumlah Terdaftar": daftar,
             "Peluang Lolos (%)": peluang,
-            "Tanggal Ditambahkan": pd.to_datetime(item.get("created_at", None), errors="coerce")
+            "Tanggal Publikasi": pd.to_datetime(item.get("created_at", None), errors="coerce")
         })
 
     df = pd.DataFrame(records)
@@ -119,7 +119,7 @@ def apply_filter():
     if search.strip():
         filtered = filtered[
             filtered["Instansi"].str.contains(search, case=False, na=False) |
-            filtered["Judul"].str.contains(search, case=False, na=False)
+            filtered["Lowongan"].str.contains(search, case=False, na=False)
         ]
     return filtered
 
@@ -156,7 +156,7 @@ def peluang_label(val):
 
 # === Format data tampil ===
 df_tampil = filtered_df.copy()
-df_tampil["Tanggal Ditambahkan"] = df_tampil["Tanggal Ditambahkan"].dt.strftime("%d %b %Y %H:%M")
+df_tampil["Tanggal Publikasi"] = df_tampil["Tanggal Publikasi"].dt.strftime("%d %b %Y %H:%M")
 
 # === Konfigurasi kolom dengan warna angka HTML ===
 st.dataframe(
