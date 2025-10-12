@@ -156,7 +156,7 @@ def peluang_label(val):
 
 # === Format data tampil ===
 df_tampil = filtered_df.copy()
-df_tampil["Tanggal Publikasi"] = df_tampil["Tanggal Publikasi"].dt.strftime("%d %b %Y %H:%M")
+df_tampil["Tanggal Ditambahkan"] = df_tampil["Tanggal Ditambahkan"].dt.strftime("%d %b %Y %H:%M")
 
 # === Konfigurasi kolom dengan warna angka HTML ===
 st.dataframe(
