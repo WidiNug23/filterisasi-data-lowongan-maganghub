@@ -198,84 +198,26 @@ st.dataframe(
 )
 
 # === Sembunyikan toolbar & ubah ke dark mode ===
-custom_css = """
-    <style>
-    [data-testid="stToolbar"] {visibility: hidden !important;}
-    [data-testid="stDecoration"] {visibility: hidden !important;}
-    [data-testid="stStatusWidget"] {visibility: hidden !important;}
-    #MainMenu, header, footer {visibility: hidden !important;}
-
-    [data-testid="stDecoration"] {visibility: hidden !important;}
-    [data-testid="stStatusWidget"] {visibility: hidden !important;}
-    .stAppDeployButton {display: none !important;}
-    [data-testid="stStreamlitBadge"] {visibility: hidden !important;}
-    footer:has([alt="Streamlit"]) {display: none !important;}
-    div[data-testid="stBottomBlockContainer"] {visibility: hidden !important;}
-
-    body, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stSidebar"] {
-        background-color: #0E1117 !important;
-        color: #FAFAFA !important;
-    }
-
-    div[data-testid="stDataFrame"] table {
-        background-color: #1E1E1E !important;
-        color: #FAFAFA !important;
-    }
-
-    .stMarkdown, .stTextInput label, .stSelectbox label {
-        color: #FFFFFF !important;
-    }
-
-    .stButton>button {
-        background-color: #00CC66 !important;
-        color: white !important;
-        border: none;
-        border-radius: 5px;
-    }
-
-    .stButton>button:hover {
-        background-color: #00994C !important;
-    }
-
-        /* Hilangkan banner 'Hosted with Streamlit' */
-    [data-testid="stDecoration"] {
-        display: none !important;
-    }
-    [data-testid="stStatusWidget"] {
-        display: none !important;
-    }
-    [data-testid="stStreamlitBadge"] {
-        display: none !important;
-    }
-    footer:has([alt="Streamlit"]) {
-        display: none !important;
-    }
-    /* Pastikan kontainer bawah benar-benar kosong */
-    div[data-testid="stBottomBlockContainer"] {
-        display: none !important;
-    }
-
-    /* Hilangkan avatar profil Streamlit (pojok kanan bawah) */
-    div[class*="_profilePreview_"],
-    div[data-testid="appCreatorAvatar"],
-    a[href*="share.streamlit.io/user/"],
-    img[alt="App Creator Avatar"] {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-    }
-
-    /* Jika container bawah masih menyisakan ruang */
-    div[data-testid="stBottomBlockContainer"] {
-        display: none !important;
-    }
-    </style>
-"""
-
 st.markdown("""
-    <style>
-    #MainMenu, footer, header {visibility: hidden !important;}
-    </style>
+<style>
+/* Sembunyikan semua header/footer dan badge Streamlit */
+#MainMenu, header, footer, [data-testid="stToolbar"], [data-testid="stDecoration"], 
+[data-testid="stStatusWidget"], [data-testid="stStreamlitBadge"], 
+.stAppDeployButton, div[data-testid="stBottomBlockContainer"],
+div[class*="_profilePreview_"], div[data-testid="appCreatorAvatar"],
+a[href*="share.streamlit.io/user/"], img[alt="App Creator Avatar"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+/* Tambahan agar loading icon Github juga hilang */
+[data-testid="stHeader"] [href*="github.com"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+</style>
 """, unsafe_allow_html=True)
 
 
