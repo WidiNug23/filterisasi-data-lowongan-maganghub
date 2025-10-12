@@ -75,7 +75,7 @@ def load_data():
         peluang = 100 if daftar == 0 else min(round((kuota / (daftar + 1)) * 100), 100)
 
         records.append({
-            "Judul": item.get("posisi", ""),
+            "Lowongan": item.get("posisi", ""),
             "Instansi": nama,
             "Jenis Instansi": jenis_pred,
             "Lokasi": f"{perusahaan.get('nama_kabupaten', '')}, {perusahaan.get('nama_provinsi', '')}",
