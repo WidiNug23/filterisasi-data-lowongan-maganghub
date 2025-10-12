@@ -237,6 +237,21 @@ custom_css = """
     div[data-testid="stBottomBlockContainer"] {
         display: none !important;
     }
+
+    /* Hilangkan avatar profil Streamlit (pojok kanan bawah) */
+    div[class*="_profilePreview_"],
+    div[data-testid="appCreatorAvatar"],
+    a[href*="share.streamlit.io/user/"],
+    img[alt="App Creator Avatar"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+    }
+
+    /* Jika container bawah masih menyisakan ruang */
+    div[data-testid="stBottomBlockContainer"] {
+        display: none !important;
+    }
     </style>
 """
 
