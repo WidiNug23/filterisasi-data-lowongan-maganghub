@@ -212,7 +212,7 @@ st.markdown(
 st.markdown(
         """
     <p style='color:#AAAAAA; font-size:13px; font-style:italic; text-align:left; margin-top:-10px; margin-bottom:10px;'>
-    * untuk mengurutkan, klik/tekan masing-masing judul kolom
+    [untuk mengurutkan, klik/tekan masing-masing judul kolom]
     </p>
     """,
     unsafe_allow_html=True
