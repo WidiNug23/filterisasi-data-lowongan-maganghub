@@ -157,18 +157,26 @@ with col3:
 # === Fungsi filter ===
 def apply_filter():
     filtered = st.session_state.df.copy()
+
+    # Filter jenis instansi (jika dipilih)
     if jenis_filter != "Semua":
         filtered = filtered[filtered["Jenis Instansi"] == jenis_filter]
 
+    # Filter kombinasi keyword
     if search.strip():
-        filtered = filtered[
-            filtered["Instansi"].str.contains(search, case=False, na=False) |
-            filtered["Lowongan"].str.contains(search, case=False, na=False) |
-            filtered["Lokasi"].str.contains(search, case=False, na=False) |
-            filtered["Program Studi"].str.contains(search, case=False, na=False) |
-            filtered["Jenjang"].str.contains(search, case=False, na=False)
-        ]
+        keywords = [k.strip() for k in search.split() if k.strip()]
+        for kw in keywords:
+            mask = (
+                filtered["Instansi"].str.contains(kw, case=False, na=False) |
+                filtered["Lowongan"].str.contains(kw, case=False, na=False) |
+                filtered["Lokasi"].str.contains(kw, case=False, na=False) |
+                filtered["Program Studi"].str.contains(kw, case=False, na=False) |
+                filtered["Jenjang"].str.contains(kw, case=False, na=False)
+            )
+            filtered = filtered[mask]
+
     return filtered
+
 
 # === Jalankan filter ===
 show_count = False
