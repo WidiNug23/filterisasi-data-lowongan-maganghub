@@ -138,8 +138,7 @@ if "df" not in st.session_state:
 df = st.session_state.df
 
 if df.empty:
-    st.warning("⚠️ Tidak ada data yang ditemukan." \
-    "Pendaftaran Perusahaan dan Peserta Program Magang Nasional Gelombang #1 telah ditutup. Nantikan Gelombang #2 pada November 2025 dengan kuota 80.000 peserta magang.")
+    st.warning("⚠️ Tidak ada data yang ditemukan.")
     st.warning("Pendaftaran Perusahaan dan Peserta Program Magang Nasional Gelombang #1 telah ditutup. Nantikan Gelombang #2 pada November 2025 dengan kuota 80.000 peserta magang.")
     st.stop()
 
