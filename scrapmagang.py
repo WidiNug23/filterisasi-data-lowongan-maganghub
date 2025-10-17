@@ -61,7 +61,7 @@ def ambil_data_api():
 
         all_data.extend(data)
         status.text(f"📄 Mengambil halaman {page} ({len(data)} data)... Total: {len(all_data)} lowongan")
-        progress.progress(min(page * LIMIT / 3000, 1.0))
+        progress.progress(min(page * LIMIT / 10000, 1.0))
         page += 1
         time.sleep(0.05)
 
@@ -139,6 +139,7 @@ df = st.session_state.df
 
 if df.empty:
     st.warning("⚠️ Tidak ada data yang ditemukan.")
+    st.warning("Pendaftaran Perusahaan dan Peserta Program Magang Nasional Gelombang #1 telah ditutup. Nantikan Gelombang #2 pada November 2025 dengan kuota 80.000 peserta magang.")
     st.stop()
 
 # === Session state untuk filtered df ===
