@@ -6,8 +6,6 @@ import time
 import json
 import time
 import requests
-from threading import Thread
-
 
 def ambil_data_api():
     semua_data = []
@@ -168,55 +166,14 @@ def load_data():
 
 # === Load data utama ===
 if "df" not in st.session_state:
-    # Pesan yang berganti
-    messages = [
-        "Memuat data dari MagangHub...",
-        "Semakin banyak data, semakin lama loading-nya",
-        "Periksa juga koneksi internetmu woy",
-        "Take your time xixi",
-    ]
+    with st.spinner("Memuat data dari MagangHub..."):
+        st.session_state.df = load_data()
 
-    # Placeholder teks loading custom
-    loading_text = st.empty()
-
-    # Indikator apakah pemuatan sudah selesai
-    result_container = {"data": None, "done": False}
-
-    # Thread untuk memuat data
-    def load_func():
-        result_container["data"] = load_data()
-        result_container["done"] = True
-
-    thread = threading.Thread(target=load_func)
-    thread.start()
-
-    # Tampilkan teks berganti setiap 3 detik selama data dimuat
-    msg_index = 0
-    spinner_cycle = ["⏳", "🔄", "💫", "⚙️"]
-    spin_idx = 0
-
-    while not result_container["done"]:
-        # Animasi spinner + pesan
-        loading_text.markdown(
-            f"### {spinner_cycle[spin_idx]} {messages[msg_index]}"
-        )
-        msg_index = (msg_index + 1) % len(messages)
-        spin_idx = (spin_idx + 1) % len(spinner_cycle)
-        time.sleep(3)
-
-    # Setelah selesai
-    thread.join()
-    loading_text.empty()
-    st.session_state.df = result_container["data"]
-
-# === Setelah data berhasil dimuat ===
 df = st.session_state.df
 
 if df.empty:
     st.warning("⚠️ Tidak ada data yang ditemukan.")
     st.stop()
-else:
-    st.success("✅ Data berhasil dimuat!")
 
 # === Session state untuk filtered df ===
 if "filtered_df" not in st.session_state:
