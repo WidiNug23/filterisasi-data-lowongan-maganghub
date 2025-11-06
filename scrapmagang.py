@@ -18,9 +18,12 @@ MAKS_WORKER = 100
 REFRESH_INTERVAL = 300
 ITEMS_PER_PAGE = 18  # agar 3 kolom pas
 
-# === CSS Modern & Neon ===
+# === CSS Modern & Neon + sembunyikan navbar ===
 st.markdown("""
 <style>
+/* Sembunyikan navbar Streamlit */
+header, footer {visibility: hidden;}
+/* Card */
 .card {
     border-radius: 12px;
     padding: 16px;
@@ -44,6 +47,8 @@ st.markdown("""
 .peluang-medium { color: #FFD700; font-weight:bold; }
 .peluang-low { color: #FF4500; font-weight:bold; }
 .peluang-verylow { color: #FF073A; font-weight:bold; }
+
+/* Pagination responsive horizontal */
 .page-nav { display: flex; justify-content: center; flex-wrap: wrap; margin: 12px 0; gap:4px; }
 .page-btn {
     background-color: #121212; 
@@ -56,6 +61,8 @@ st.markdown("""
 }
 .page-btn:hover { background-color: #00FFFF; color: #121212; }
 .page-btn.active { background-color: #00FFFF; color: #121212; }
+
+/* Tombol neon */
 .neon-btn {
     background-color: #121212; 
     color: #00FFFF;
@@ -74,6 +81,12 @@ st.markdown("""
     box-shadow: 0 0 10px #00FFFF, 0 0 20px #00FFFF, 0 0 30px #00FFFF;
 }
 .info-note { font-size: 10px; color: #B0B0B0; margin-bottom: 10px; }
+
+/* Responsive untuk mobile */
+@media (max-width: 768px) {
+    .page-nav { flex-wrap: wrap; gap:2px; }
+    .page-btn { padding: 3px 6px; font-size: 12px; }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -264,24 +277,20 @@ def next_page():
     if st.session_state.page_num < total_pages:
         st.session_state.page_num += 1
 
-# Navigasi horizontal
+# Navigasi horizontal menggunakan HTML + CSS (responsive)
 pages_to_render = render_pagination(st.session_state.page_num, total_pages)
-cols = st.columns(len(pages_to_render) + 2)  # +2 untuk Prev/Next
-
-# Tombol Prev
-cols[0].button("⏪", on_click=prev_page)
-
-# Tombol halaman
-for idx, p in enumerate(pages_to_render):
+page_buttons_html = '<div class="page-nav">'
+page_buttons_html += f'<button class="page-btn" onclick="window.location.href=\'?page={max(st.session_state.page_num-1,1)}\'">⏪</button>'
+for p in pages_to_render:
+    active_class = "active" if p == st.session_state.page_num else ""
     if p == "...":
-        cols[idx + 1].markdown("<b>...</b>", unsafe_allow_html=True)
+        page_buttons_html += '<span style="color:#00FFFF;font-weight:bold;">...</span>'
     else:
-        cols[idx + 1].button(str(p), on_click=go_to_page, args=(p,))
+        page_buttons_html += f'<button class="page-btn {active_class}" onclick="window.location.href=\'?page={p}\'">{p}</button>'
+page_buttons_html += f'<button class="page-btn" onclick="window.location.href=\'?page={min(st.session_state.page_num+1,total_pages)}\'">⏩</button>'
+page_buttons_html += '</div>'
+st.markdown(page_buttons_html, unsafe_allow_html=True)
 
-# Tombol Next
-cols[-1].button("⏩", on_click=next_page)
-
-
-# === Tombol download CSV ===
+# Tombol download CSV
 csv = df.to_csv(index=False).encode("utf-8")
 st.download_button("💾 Download CSV",data=csv,file_name=f"lowongan_maganghub_{int(time.time())}.csv",mime="text/csv")
