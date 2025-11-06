@@ -253,59 +253,81 @@ for idx,row in df_page.iterrows():
     """, unsafe_allow_html=True)
 
 # === Pagination ===
-if "page_num" not in st.session_state: st.session_state.page_num=1
-total_items=len(filtered_df)
-total_pages=max(1, math.ceil(total_items/ITEMS_PER_PAGE))
-start_idx=(st.session_state.page_num-1)*ITEMS_PER_PAGE
-end_idx=start_idx+ITEMS_PER_PAGE
-df_page=filtered_df.iloc[start_idx:end_idx]
+if "page_num" not in st.session_state:
+    st.session_state.page_num = 1
 
-def get_peluang_class(p):
-    return "peluang-high" if p>=75 else "peluang-medium" if p>=50 else "peluang-low" if p>=25 else "peluang-verylow"
+total_pages = max(1, math.ceil(total_items / ITEMS_PER_PAGE))
 
-columns = st.columns(3)
-for idx,row in df_page.iterrows():
-    col = columns[idx%3]
-    col.markdown(f"""
-    <div class="card">
-        <div class="card-title">{row['Lowongan']}</div>
-        <div class="card-subtitle">{row['Instansi']}</div>
-        <div class="card-subtitle2">{row['Lokasi']}</div>
-        <div class="card-detail"><b>Program Studi:</b> {row['Program Studi'] or '-'}</div>
-        <div class="card-detail"><b>Jenjang:</b> {row['Jenjang'] or '-'}</div>
-        <div class="card-detail"><b>Jumlah Kuota:</b> {row['Jumlah Kuota']}, Pendaftar: {row['Jumlah Pendaftar']}</div>
-        <div class="card-detail"><b>Peluang Lolos:</b> <span class="{get_peluang_class(row['Peluang Lolos (%)'])}">{row['Peluang Lolos (%)']}%</span></div>
-        <div class="card-detail"><b>Tanggal Publikasi:</b> {row['Tanggal Publikasi'].strftime("%d %b %Y %H:%M")}</div>
-    </div>
-    """, unsafe_allow_html=True)
+# Fungsi render tombol pagination
+def render_pagination(current_page, total_pages, delta=2):
+    """
+    current_page: halaman aktif
+    total_pages: total halaman
+    delta: jumlah halaman di kiri & kanan yang tampil
+    """
+    pages = []
+    left = max(1, current_page - delta)
+    right = min(total_pages, current_page + delta)
 
-# === Render tombol pagination interaktif ===
-def render_pagination_buttons():
-    delta=2
-    pages=[]
-    left=st.session_state.page_num - delta
-    right=st.session_state.page_num + delta
-    for i in range(1, total_pages+1):
-        if i==1 or i==total_pages or (left <= i <= right):
+    for i in range(1, total_pages + 1):
+        if i == 1 or i == total_pages or left <= i <= right:
             pages.append(i)
-        elif pages[-1] != '...':
-            pages.append('...')
-    cols = st.columns(len(pages)+2)
-    # Prev
-    if cols[0].button("⏪ Prev") and st.session_state.page_num>1:
-        st.session_state.page_num -=1
-    # Page buttons
-    for i,p in enumerate(pages):
-        if p=="...":
-            cols[i+1].markdown("...")
-        else:
-            if cols[i+1].button(str(p)):
-                st.session_state.page_num = p
-    # Next
-    if cols[-1].button("Next ⏩") and st.session_state.page_num<total_pages:
-        st.session_state.page_num +=1
+        elif pages[-1] != "...":
+            pages.append("...")
+    return pages
 
-render_pagination_buttons()
+def show_pagination():
+    pages = render_pagination(st.session_state.page_num, total_pages)
+    # +2 untuk Prev & Next
+    cols = st.columns(len(pages) + 2, gap="small")
+
+    # Prev button
+    if cols[0].button("⏪ Prev") and st.session_state.page_num > 1:
+        st.session_state.page_num -= 1
+
+    # Page buttons
+    for i, p in enumerate(pages):
+        if p == "...":
+            cols[i+1].markdown("...", unsafe_allow_html=True)
+        else:
+            # tombol aktif berbeda warnanya
+            if st.session_state.page_num == p:
+                if cols[i+1].button(f"**{p}**"):
+                    st.session_state.page_num = p
+            else:
+                if cols[i+1].button(str(p)):
+                    st.session_state.page_num = p
+
+    # Next button
+    if cols[-1].button("Next ⏩") and st.session_state.page_num < total_pages:
+        st.session_state.page_num += 1
+
+# CSS tambahan agar tombol terlihat neon & responsif
+st.markdown("""
+<style>
+div.stButton > button {
+    background-color: #121212;
+    color: #00FFFF;
+    border: 1px solid #00FFFF;
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+}
+div.stButton > button:hover {
+    background-color: #00FFFF;
+    color: #121212;
+}
+div.stButton > button:focus {
+    outline: none;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# Tampilkan pagination
+show_pagination()
+st.write(f"Halaman aktif: {st.session_state.page_num} dari {total_pages}")
+
 # Tombol download CSV
 csv = df.to_csv(index=False).encode("utf-8")
 st.download_button("💾 Download CSV",data=csv,file_name=f"lowongan_maganghub_{int(time.time())}.csv",mime="text/csv")
