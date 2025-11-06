@@ -254,21 +254,15 @@ for idx,row in df_page.iterrows():
 
 # === Pagination ===
 if "page_num" not in st.session_state:
-    st.session_state.page_num = 1
+    st.session_state.page_num = 6
 
 total_pages = max(1, math.ceil(total_items / ITEMS_PER_PAGE))
 
-# Fungsi render tombol pagination
+# Fungsi render tombol pagination dengan "..."
 def render_pagination(current_page, total_pages, delta=2):
-    """
-    current_page: halaman aktif
-    total_pages: total halaman
-    delta: jumlah halaman di kiri & kanan yang tampil
-    """
     pages = []
     left = max(1, current_page - delta)
     right = min(total_pages, current_page + delta)
-
     for i in range(1, total_pages + 1):
         if i == 1 or i == total_pages or left <= i <= right:
             pages.append(i)
@@ -276,58 +270,52 @@ def render_pagination(current_page, total_pages, delta=2):
             pages.append("...")
     return pages
 
-def show_pagination():
+# Tampilkan pagination vertikal
+def show_pagination_vertical():
     pages = render_pagination(st.session_state.page_num, total_pages)
-    # +2 untuk Prev & Next
-    cols = st.columns(len(pages) + 2, gap="small")
-
+    container = st.container()  # semua tombol berada di container vertikal
+    
     # Prev button
-    if cols[0].button("⏪ Prev") and st.session_state.page_num > 1:
+    if container.button("⏪ Prev") and st.session_state.page_num > 1:
         st.session_state.page_num -= 1
 
-    # Page buttons
-    for i, p in enumerate(pages):
+    # Page buttons vertikal
+    for p in pages:
         if p == "...":
-            cols[i+1].markdown("...", unsafe_allow_html=True)
+            container.markdown("...")
         else:
-            # tombol aktif berbeda warnanya
-            if st.session_state.page_num == p:
-                if cols[i+1].button(f"**{p}**"):
-                    st.session_state.page_num = p
-            else:
-                if cols[i+1].button(str(p)):
-                    st.session_state.page_num = p
+            label = f"**{p}**" if p == st.session_state.page_num else str(p)
+            if container.button(label):
+                st.session_state.page_num = p
 
     # Next button
-    if cols[-1].button("Next ⏩") and st.session_state.page_num < total_pages:
+    if container.button("Next ⏩") and st.session_state.page_num < total_pages:
         st.session_state.page_num += 1
 
-# CSS tambahan agar tombol terlihat neon & responsif
+# CSS tombol neon
 st.markdown("""
 <style>
 div.stButton > button {
     background-color: #121212;
     color: #00FFFF;
     border: 1px solid #00FFFF;
-    padding: 4px 10px;
-    border-radius: 5px;
+    padding: 6px 12px;
+    border-radius: 6px;
     font-weight: bold;
     cursor: pointer;
+    width: 100%;
+    text-align: center;
 }
 div.stButton > button:hover {
     background-color: #00FFFF;
     color: #121212;
 }
-div.stButton > button:focus {
-    outline: none;
-}
 </style>
 """, unsafe_allow_html=True)
 
-# Tampilkan pagination
-show_pagination()
+# Tampilkan pagination vertikal
+show_pagination_vertical()
 st.write(f"Halaman aktif: {st.session_state.page_num} dari {total_pages}")
-
 # Tombol download CSV
 csv = df.to_csv(index=False).encode("utf-8")
 st.download_button("💾 Download CSV",data=csv,file_name=f"lowongan_maganghub_{int(time.time())}.csv",mime="text/csv")
