@@ -164,17 +164,42 @@ def load_data():
     df.drop_duplicates(subset=["Lowongan", "Instansi"], inplace=True)
     return df
 
-# === Load data utama ===
+# === Load data utama dengan animasi teks ===
 if "df" not in st.session_state:
-    with st.spinner("Memuat data dari MagangHub..."):
-        st.session_state.df = load_data()
+    messages = [
+        "Memuat data dari MagangHub...",
+        "Semakin banyak data, semakin lama loading-nya 😅",
+        "Periksa juga koneksi internetmu cuyy 🌐",
+        "Take your time xixi ☕",
+    ]
+    
+    # Placeholder untuk teks yang berganti
+    status_text = st.empty()
+    progress_bar = st.progress(0)
+    
+    # Ganti teks setiap 3 detik selama data dimuat
+    for i in range(len(messages) * 2):  # total durasi = jumlah_pesan * 3 detik * 2 loop
+        msg = messages[i % len(messages)]
+        status_text.markdown(f"**{msg}**")
+        progress_bar.progress((i + 1) / (len(messages) * 2))
+        time.sleep(3)
+        
+        # Simulasi memuat data (ganti dengan fungsi aslimu)
+        if i == 2:  # contoh: setelah beberapa detik data selesai
+            st.session_state.df = load_data()
+            break
+    
+    status_text.empty()
+    progress_bar.empty()
 
+# === Setelah data berhasil dimuat ===
 df = st.session_state.df
 
 if df.empty:
     st.warning("⚠️ Tidak ada data yang ditemukan.")
-    st.warning("Pendaftaran Peserta Pemagangan 6 November 2025 - 12 November 2025")
     st.stop()
+else:
+    st.success("✅ Data berhasil dimuat!")
 
 # === Session state untuk filtered df ===
 if "filtered_df" not in st.session_state:
