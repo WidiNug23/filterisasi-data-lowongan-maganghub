@@ -166,43 +166,27 @@ def load_data():
 
 # === Load data utama ===
 if "df" not in st.session_state:
-    with st.spinner("Sedang memuat data..."):
-        # Daftar pesan bergantian
-        messages = [
-            "Memuat data dari MagangHub...",
-            "Semakin banyak data, semakin lama loading-nya",
-            "Periksa juga koneksi internetmu cuyy",
-            "Take your time xixi",
-        ]
-
-        # Placeholder untuk teks yang berubah
-        msg_placeholder = st.empty()
-
-        # Loop animasi selama data dimuat
-        start_time = time.time()
-        msg_index = 0
-
-        while True:
-            # Ganti pesan setiap 3 detik
-            msg_placeholder.markdown(f"**{messages[msg_index]}**")
-            time.sleep(3)
-            msg_index = (msg_index + 1) % len(messages)
-
-            # Jika waktu cukup lama, keluar dari loop (ganti sesuai durasi rata-rata load_data)
-            if time.time() - start_time > 15:
-                break
-
-        # Setelah animasi selesai, jalankan pemuatan data
+    with st.spinner("Memuat data dari MagangHub..."):
+        
         st.session_state.df = load_data()
 
-# === Setelah data berhasil dimuat ===
+    with st.spinner("Semakin banyak data, semakin lama loading-nya"):
+        
+        st.session_state.df = load_data()
+
+    with st.spinner("Periksa juga koneksi internetmu woy"):
+        
+        st.session_state.df = load_data()
+
+    with st.spinner("Take your time"):
+
+        st.session_state.df = load_data()
+
 df = st.session_state.df
 
 if df.empty:
     st.warning("⚠️ Tidak ada data yang ditemukan.")
     st.stop()
-else:
-    st.success("✅ Data berhasil dimuat!")
 
 # === Session state untuk filtered df ===
 if "filtered_df" not in st.session_state:
