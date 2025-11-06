@@ -254,7 +254,7 @@ for idx,row in df_page.iterrows():
 
 # === Pagination ===
 if "page_num" not in st.session_state:
-    st.session_state.page_num = 6
+    st.session_state.page_num = 1
 
 total_pages = max(1, math.ceil(total_items / ITEMS_PER_PAGE))
 
@@ -270,29 +270,30 @@ def render_pagination(current_page, total_pages, delta=2):
             pages.append("...")
     return pages
 
-# Tampilkan pagination vertikal
-def show_pagination_vertical():
+# Tampilkan pagination horizontal
+def show_pagination_horizontal():
     pages = render_pagination(st.session_state.page_num, total_pages)
-    container = st.container()  # semua tombol berada di container vertikal
     
+    cols = st.columns(len(pages) + 2)  # +2 untuk Prev dan Next
+
     # Prev button
-    if container.button("⏪ Prev") and st.session_state.page_num > 1:
+    if cols[0].button("⏪ Prev") and st.session_state.page_num > 1:
         st.session_state.page_num -= 1
 
-    # Page buttons vertikal
-    for p in pages:
+    # Page buttons horizontal
+    for idx, p in enumerate(pages):
         if p == "...":
-            container.markdown("...")
+            cols[idx+1].markdown("...")
         else:
             label = f"**{p}**" if p == st.session_state.page_num else str(p)
-            if container.button(label):
+            if cols[idx+1].button(label):
                 st.session_state.page_num = p
 
     # Next button
-    if container.button("Next ⏩") and st.session_state.page_num < total_pages:
+    if cols[-1].button("Next ⏩") and st.session_state.page_num < total_pages:
         st.session_state.page_num += 1
 
-# CSS tombol neon
+# CSS tombol neon horizontal
 st.markdown("""
 <style>
 div.stButton > button {
@@ -303,8 +304,7 @@ div.stButton > button {
     border-radius: 6px;
     font-weight: bold;
     cursor: pointer;
-    width: 100%;
-    text-align: center;
+    min-width: 50px;
 }
 div.stButton > button:hover {
     background-color: #00FFFF;
@@ -313,8 +313,8 @@ div.stButton > button:hover {
 </style>
 """, unsafe_allow_html=True)
 
-# Tampilkan pagination vertikal
-show_pagination_vertical()
+# Tampilkan pagination horizontal
+show_pagination_horizontal()
 st.write(f"Halaman aktif: {st.session_state.page_num} dari {total_pages}")
 # Tombol download CSV
 csv = df.to_csv(index=False).encode("utf-8")
