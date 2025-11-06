@@ -164,33 +164,36 @@ def load_data():
     df.drop_duplicates(subset=["Lowongan", "Instansi"], inplace=True)
     return df
 
-# === Load data utama dengan animasi teks ===
+# === Load data utama ===
 if "df" not in st.session_state:
-    messages = [
-        "Memuat data dari MagangHub...",
-        "Semakin banyak data, semakin lama loading-nya 😅",
-        "Periksa juga koneksi internetmu cuyy 🌐",
-        "Take your time xixi ☕",
-    ]
-    
-    # Placeholder untuk teks yang berganti
-    status_text = st.empty()
-    progress_bar = st.progress(0)
-    
-    # Ganti teks setiap 3 detik selama data dimuat
-    for i in range(len(messages) * 2):  # total durasi = jumlah_pesan * 3 detik * 2 loop
-        msg = messages[i % len(messages)]
-        status_text.markdown(f"**{msg}**")
-        progress_bar.progress((i + 1) / (len(messages) * 2))
-        time.sleep(3)
-        
-        # Simulasi memuat data (ganti dengan fungsi aslimu)
-        if i == 2:  # contoh: setelah beberapa detik data selesai
-            st.session_state.df = load_data()
-            break
-    
-    status_text.empty()
-    progress_bar.empty()
+    with st.spinner("Sedang memuat data..."):
+        # Daftar pesan bergantian
+        messages = [
+            "Memuat data dari MagangHub...",
+            "Semakin banyak data, semakin lama loading-nya",
+            "Periksa juga koneksi internetmu cuyy",
+            "Take your time xixi",
+        ]
+
+        # Placeholder untuk teks yang berubah
+        msg_placeholder = st.empty()
+
+        # Loop animasi selama data dimuat
+        start_time = time.time()
+        msg_index = 0
+
+        while True:
+            # Ganti pesan setiap 3 detik
+            msg_placeholder.markdown(f"**{messages[msg_index]}**")
+            time.sleep(3)
+            msg_index = (msg_index + 1) % len(messages)
+
+            # Jika waktu cukup lama, keluar dari loop (ganti sesuai durasi rata-rata load_data)
+            if time.time() - start_time > 15:
+                break
+
+        # Setelah animasi selesai, jalankan pemuatan data
+        st.session_state.df = load_data()
 
 # === Setelah data berhasil dimuat ===
 df = st.session_state.df
