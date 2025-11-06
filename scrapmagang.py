@@ -6,6 +6,7 @@ import time
 import json
 import time
 import requests
+from threading import Thread
 
 def ambil_data_api():
     semua_data = []
@@ -166,27 +167,59 @@ def load_data():
 
 # === Load data utama ===
 if "df" not in st.session_state:
-    with st.spinner("Memuat data dari MagangHub..."):
-        
-        st.session_state.df = load_data()
+    messages = [
+        "Memuat data dari MagangHub...",
+        "Semakin banyak data, semakin lama loading-nya 😅",
+        "Periksa juga koneksi internetmu woy 🌐",
+        "Take your time xixi ☕",
+    ]
 
-    with st.spinner("Semakin banyak data, semakin lama loading-nya"):
-        
-        st.session_state.df = load_data()
+    # Placeholder untuk spinner & pesan
+    spinner_placeholder = st.empty()
+    text_placeholder = st.empty()
 
-    with st.spinner("Periksa juga koneksi internetmu woy"):
-        
-        st.session_state.df = load_data()
+    # Fungsi untuk menampilkan spinner manual
+    def show_spinner():
+        with spinner_placeholder.container():
+            with st.spinner(" "):  # spinner aktif, tapi tanpa teks
+                msg_index = 0
+                while not result_container["done"]:
+                    text_placeholder.markdown(f"**{messages[msg_index]}**")
+                    msg_index = (msg_index + 1) % len(messages)
+                    time.sleep(3)
 
-    with st.spinner("Take your time"):
+    # Jalankan pemuatan data di background
+    result_container = {"data": None, "done": False}
 
-        st.session_state.df = load_data()
+    def load_func():
+        result_container["data"] = load_data()
+        result_container["done"] = True
+
+    loader_thread = Thread(target=load_func)
+    spinner_thread = Thread(target=show_spinner)
+
+    # Jalankan keduanya bersamaan
+    loader_thread.start()
+    spinner_thread.start()
+
+    # Tunggu sampai data selesai
+    loader_thread.join()
+    spinner_thread.join()
+
+    # Hapus spinner dan teks setelah selesai
+    spinner_placeholder.empty()
+    text_placeholder.empty()
+
+    # Simpan hasil data
+    st.session_state.df = result_container["data"]
 
 df = st.session_state.df
 
 if df.empty:
     st.warning("⚠️ Tidak ada data yang ditemukan.")
     st.stop()
+else:
+    st.success("✅ Data berhasil dimuat!")
 
 # === Session state untuk filtered df ===
 if "filtered_df" not in st.session_state:
