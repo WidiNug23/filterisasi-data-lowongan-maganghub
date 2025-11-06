@@ -127,7 +127,7 @@ def ambil_data_api():
                     if data: all_data.extend(data)
                 except: pass
                 progress.progress(min(len(all_data)/total_estimasi, 1.0))
-                status.text(f"Memuat {len(all_data):,} data. Sabar ya, Kak.")
+                status.text(f"Memuat {len(all_data):,} data. Sabar ya, Kak. Datanya banyak")
     status.text(f"✅ Total {len(all_data):,} lowongan")
     progress.progress(1.0)
     return all_data
