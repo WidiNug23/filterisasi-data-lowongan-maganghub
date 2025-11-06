@@ -1,63 +1,36 @@
-import requests
-import pandas as pd
 import streamlit as st
-import joblib
+import pandas as pd
+import requests
 import time
 import json
-import time
-import requests
-
-def ambil_data_api():
-    semua_data = []
-    for page in range(1, 51):
-        url = f"https://maganghub.kemnaker.go.id/api/lowongan?page={page}"
-        for attempt in range(3):  # coba 3 kali
-            try:
-                response = requests.get(url, timeout=20)
-                response.raise_for_status()
-                data = response.json().get("data", [])
-                if not data:
-                    print(f"Hentikan di halaman {page}, tidak ada data lagi.")
-                    return semua_data
-                semua_data.extend(data)
-                print(f"✅ Halaman {page} berhasil diambil ({len(data)} data)")
-                break  # keluar dari loop retry kalau berhasil
-            except requests.exceptions.Timeout:
-                print(f"⚠️ Timeout halaman {page}, percobaan ke-{attempt+1}")
-                time.sleep(3)
-            except Exception as e:
-                print(f"⚠️ Gagal ambil data halaman {page}: {e}")
-                break
-        time.sleep(1)  # beri jeda agar server tidak overload
-    return semua_data
-
+import joblib
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # === Konfigurasi dasar ===
 st.set_page_config(page_title="Filterisasi Lowongan Magang", layout="wide")
-st.title("Sistem Filterisasi Lowongan MagangHub")
+st.title("📊 Sistem Filterisasi Lowongan MagangHub (Real-Time)")
 
 BASE_URL = "https://maganghub.kemnaker.go.id/be/v1/api/list/vacancies-aktif"
-LIMIT = 100  # batas per halaman dari API
+LIMIT = 100
+MAKS_HALAMAN = 200
+MAKS_WORKER = 15
+REFRESH_INTERVAL = 300  # refresh tiap 5 menit
 
-# === CSS global ===
+# === CSS tampilan bersih ===
 st.markdown("""
 <style>
-#MainMenu, header, footer, [data-testid="stToolbar"], [data-testid="stDecoration"], 
-[data-testid="stStatusWidget"], [data-testid="stStreamlitBadge"], 
+#MainMenu, header, footer, [data-testid="stToolbar"], [data-testid="stDecoration"],
+[data-testid="stStatusWidget"], [data-testid="stStreamlitBadge"],
 .stAppDeployButton, div[data-testid="stBottomBlockContainer"],
 div[class*="_profilePreview_"], div[data-testid="appCreatorAvatar"],
 a[href*="share.streamlit.io/user/"], img[alt="App Creator Avatar"],
 [data-testid="stHeader"] [href*="github.com"] {
     display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    position: fixed !important;
-    z-index: -999 !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# === Load model dan vectorizer ===
+# === Load model & vectorizer ===
 @st.cache_resource
 def load_model():
     model = joblib.load("model_maganghub.pkl")
@@ -66,39 +39,56 @@ def load_model():
 
 model, vectorizer = load_model()
 
-# === Fungsi ambil data API ===
+# === Ambil satu halaman data ===
+def ambil_halaman(page, uniq):
+    """Ambil satu halaman data dengan tambahan parameter unik agar tidak di-cache."""
+    url = f"{BASE_URL}?page={page}&limit={LIMIT}&t={uniq}"
+    try:
+        res = requests.get(url, timeout=10)
+        res.raise_for_status()
+        return res.json().get("data", [])
+    except Exception:
+        return []
+
+# === Ambil semua data API (stop otomatis bila kosong 3x) ===
 def ambil_data_api():
     all_data = []
-    page = 1
     status = st.empty()
     progress = st.progress(0)
+    stop_counter = 0
+    berhasil = 0
+    batch_size = 10
+    uniq = int(time.time())  # buat token unik agar cache API tidak menempel
 
-    while True:
-        url = f"{BASE_URL}?page={page}&limit={LIMIT}"
-        try:
-            res = requests.get(url, timeout=10)
-            res.raise_for_status()
-        except Exception as e:
-            st.error(f"⚠️ Gagal ambil data halaman {page}: {e}")
+    for start_page in range(1, MAKS_HALAMAN + 1, batch_size):
+        pages = list(range(start_page, min(start_page + batch_size, MAKS_HALAMAN + 1)))
+
+        with ThreadPoolExecutor(max_workers=MAKS_WORKER) as executor:
+            futures = {executor.submit(ambil_halaman, p, uniq): p for p in pages}
+            for future in as_completed(futures):
+                page = futures[future]
+                try:
+                    data = future.result()
+                    if data:
+                        all_data.extend(data)
+                        berhasil += 1
+                        stop_counter = 0
+                    else:
+                        stop_counter += 1
+                except Exception:
+                    stop_counter += 1
+
+                progress.progress(min(page / MAKS_HALAMAN, 1.0))
+                status.text(f"📄 Memuat halaman {page} — total {len(all_data):,} data...")
+
+        if stop_counter >= 3:  # hentikan bila 3 batch kosong berturut
             break
-
-        data = res.json().get("data", [])
-        if not data:
-            break
-
-        all_data.extend(data)
-        status.text(f"📄 Mengambil halaman {page} ({len(data)} data)... Total: {len(all_data)} lowongan")
-        progress.progress(min(page * LIMIT / 10000, 1.0))
-        page += 1
-        time.sleep(0.05)
 
     progress.empty()
-    final_text = f"Diperoleh {format(len(all_data), ',').replace(',', '.')} lowongan"
-    status.text(final_text)
-    st.session_state["last_status"] = final_text
+    status.text(f"✅ Diperoleh total {len(all_data):,} lowongan (dari {berhasil} halaman berhasil).")
     return all_data
 
-# === Fungsi olah data API menjadi DataFrame ===
+# === Konversi data ke DataFrame ===
 def load_data():
     data = ambil_data_api()
     records = []
@@ -110,7 +100,6 @@ def load_data():
         deskripsi = perusahaan.get("deskripsi_perusahaan", "")
         teks = f"{nama} {alamat} {deskripsi}"
 
-        # Prediksi jenis instansi
         jenis_pred = model.predict(vectorizer.transform([teks]))[0]
         if jenis_pred not in ["Negeri", "Swasta"]:
             jenis_pred = "Swasta"
@@ -119,7 +108,6 @@ def load_data():
         daftar = item.get("jumlah_terdaftar", 0)
         peluang = 100 if daftar == 0 else min(round((kuota / (daftar + 1)) * 100), 100)
 
-        # === Parsing program studi ===
         prog_studi_raw = item.get("program_studi")
         if prog_studi_raw:
             try:
@@ -130,23 +118,19 @@ def load_data():
         else:
             program_studi = ""
 
-        # === Parsing jenjang ===
         jenjang_raw = item.get("jenjang")
         jenjang = ""
         if jenjang_raw:
             try:
                 jenjang_list = json.loads(jenjang_raw)
                 if isinstance(jenjang_list, list):
-                    # Bisa berupa list of dict atau list of string
                     if all(isinstance(j, dict) for j in jenjang_list):
                         jenjang = ", ".join([j.get("title", "").strip() for j in jenjang_list if j.get("title")])
                     elif all(isinstance(j, str) for j in jenjang_list):
                         jenjang = ", ".join([j.strip() for j in jenjang_list if j.strip()])
             except Exception:
-                # fallback kalau bukan JSON valid
                 jenjang = str(jenjang_raw).strip()
 
-        # === Simpan ke records ===
         records.append({
             "Lowongan": item.get("posisi", ""),
             "Instansi": nama,
@@ -164,42 +148,42 @@ def load_data():
     df.drop_duplicates(subset=["Lowongan", "Instansi"], inplace=True)
     return df
 
-# === Load data utama ===
-if "df" not in st.session_state:
-    with st.spinner("Memuat data dari MagangHub..."):
+# === Logika refresh otomatis ===
+def perlu_refresh():
+    last_time = st.session_state.get("last_update_time", 0)
+    return (time.time() - last_time) > REFRESH_INTERVAL
+
+# Paksa refresh setiap reload halaman (menghapus cache session lama)
+if "session_flag" not in st.session_state:
+    st.session_state.clear()
+    st.session_state.session_flag = True
+
+if "df" not in st.session_state or perlu_refresh():
+    with st.spinner("🔄 Mengambil data terbaru dari MagangHub..."):
         st.session_state.df = load_data()
+        st.session_state.last_update_time = time.time()
 
 df = st.session_state.df
 
 if df.empty:
-    st.warning("⚠️ Tidak ada data yang ditemukan.")
+    st.warning("⚠️ Tidak ada data ditemukan.")
     st.stop()
-
-# === Session state untuk filtered df ===
-if "filtered_df" not in st.session_state:
-    st.session_state.filtered_df = df.copy()
 
 # === Filter input ===
 col1, col2, col3 = st.columns([2, 2, 1])
 with col1:
-    search = st.text_input("🔍 Masukkan kata kunci (Instansi/Posisi/Lokasi/Program Studi/Jenjang)", key="search")
+    search = st.text_input("🔍 Kata kunci (Instansi/Posisi/Lokasi/Prodi/Jenjang)")
 with col2:
-    jenis_filter = st.selectbox("🏢 Jenis Instansi", ["Semua", "Negeri", "Swasta"], key="jenis")
+    jenis_filter = st.selectbox("🏢 Jenis Instansi", ["Semua", "Negeri", "Swasta"])
 with col3:
     cari_btn = st.button("🔎 Cari")
 
-# === Fungsi filter ===
 def apply_filter():
-    filtered = st.session_state.df.copy()
-
-    # Filter jenis instansi (jika dipilih)
+    filtered = df.copy()
     if jenis_filter != "Semua":
         filtered = filtered[filtered["Jenis Instansi"] == jenis_filter]
-
-    # Filter kombinasi keyword
     if search.strip():
-        keywords = [k.strip() for k in search.split() if k.strip()]
-        for kw in keywords:
+        for kw in search.split():
             mask = (
                 filtered["Instansi"].str.contains(kw, case=False, na=False) |
                 filtered["Lowongan"].str.contains(kw, case=False, na=False) |
@@ -208,59 +192,17 @@ def apply_filter():
                 filtered["Jenjang"].str.contains(kw, case=False, na=False)
             )
             filtered = filtered[mask]
-
     return filtered
 
+if cari_btn or search.strip():
+    filtered_df = apply_filter()
+else:
+    filtered_df = df.copy()
 
-# === Jalankan filter ===
-show_count = False
-if cari_btn or search != "":
-    st.session_state.filtered_df = apply_filter()
-    show_count = bool(search.strip())
-
-filtered_df = st.session_state.filtered_df
-
-# === Jumlah hasil ===
-if show_count:
-    st.markdown(f"📄 Menampilkan **{len(filtered_df):,}** hasil pencarian.")
-
-# === Pewarnaan peluang ===
-def peluang_label(val):
-    if pd.isna(val):
-        return ""
-    if val >= 75:
-        warna = "#00CC66"
-    elif val >= 50:
-        warna = "#FFD700"
-    elif val >= 25:
-        warna = "#FF9900"
-    else:
-        warna = "#FF4B4B"
-    return f"<span style='color:{warna}; font-weight:bold;'>{val}%</span>"
-
+# === Tabel dengan pewarnaan ===
 df_tampil = filtered_df.copy()
 df_tampil["Tanggal Publikasi"] = df_tampil["Tanggal Publikasi"].dt.strftime("%d %b %Y %H:%M")
-df_tampil.rename(columns={"Jenis Instansi": "* Jenis Instansi"}, inplace=True)
 
-st.markdown(
-    """
-    <p style='color:#AAAAAA; font-size:13px; font-style:italic; text-align:left; margin-top:-10px; margin-bottom:10px;'>
-    * data jenis instansi masih dalam tahap training dan pengembangan
-    </p>
-    """,
-    unsafe_allow_html=True
-)
-
-st.markdown(
-        """
-    <p style='color:#AAAAAA; font-size:13px; font-style:italic; text-align:left; margin-top:-10px; margin-bottom:10px;'>
-    [untuk mengurutkan, klik/tekan masing-masing judul kolom]
-    </p>
-    """,
-    unsafe_allow_html=True
-)
-
-# === Tabel utama ===
 st.dataframe(
     df_tampil.style.format({
         "Peluang Lolos (%)": lambda x: f"{x}%" if pd.notna(x) else "-"
@@ -278,10 +220,10 @@ st.dataframe(
     height=850
 )
 
-# === Tombol download CSV ===
+# === Tombol download ===
 csv = df.to_csv(index=False).encode("utf-8")
 st.download_button(
-    "💾 Download Hasil CSV",
+    "💾 Download CSV",
     data=csv,
     file_name=f"lowongan_maganghub_{int(time.time())}.csv",
     mime="text/csv"
