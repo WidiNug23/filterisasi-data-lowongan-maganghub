@@ -166,14 +166,46 @@ def load_data():
 
 # === Load data utama ===
 if "df" not in st.session_state:
-    with st.spinner("Memuat data dari MagangHub..."):
-        st.session_state.df = load_data()
+    messages = [
+        "Memuat data dari MagangHub...",
+        "Semakin banyak data, semakin lama loading-nya 😅",
+        "Periksa juga koneksi internetmu woy 🌐",
+        "Take your time xixi ☕",
+    ]
+
+    msg_placeholder = st.empty()
+
+    result_container = {"data": None, "done": False}
+
+    def load_func():
+        # Proses pemuatan data dilakukan di background
+        result_container["data"] = load_data()
+        result_container["done"] = True
+
+    # Jalankan pemuatan data di thread terpisah
+    loader_thread = Thread(target=load_func)
+    loader_thread.start()
+
+    # Spinner utama — tetap aktif sampai load selesai
+    with st.spinner(""):
+        msg_index = 0
+        while not result_container["done"]:
+            msg_placeholder.markdown(f"**{messages[msg_index]}**")
+            msg_index = (msg_index + 1) % len(messages)
+            time.sleep(3)
+
+    # Setelah selesai
+    loader_thread.join()
+    msg_placeholder.empty()
+    st.session_state.df = result_container["data"]
 
 df = st.session_state.df
 
 if df.empty:
     st.warning("⚠️ Tidak ada data yang ditemukan.")
     st.stop()
+else:
+    st.success("✅ Data berhasil dimuat!")
 
 # === Session state untuk filtered df ===
 if "filtered_df" not in st.session_state:
