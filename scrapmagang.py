@@ -11,9 +11,9 @@ st.set_page_config(page_title="Filterisasi Lowongan Magang", layout="wide")
 st.title("Sistem Filterisasi Lowongan MagangHub")
 
 BASE_URL = "https://maganghub.kemnaker.go.id/be/v1/api/list/vacancies-aktif"
-LIMIT = 100
-MAKS_HALAMAN = 500
-MAKS_WORKER = 15
+LIMIT = 1000
+MAKS_HALAMAN = 150
+MAKS_WORKER = 100
 REFRESH_INTERVAL = 300  # refresh tiap 5 menit
 
 # === CSS tampilan bersih ===
@@ -59,6 +59,7 @@ def ambil_data_api():
     uniq = int(time.time())
     total_page_berhasil = 0
     kosong_berturut = 0
+    total_estimasi = MAKS_HALAMAN * LIMIT  # estimasi total data
 
     for batch_start in range(1, MAKS_HALAMAN + 1, MAKS_WORKER):
         pages = list(range(batch_start, min(batch_start + MAKS_WORKER, MAKS_HALAMAN + 1)))
@@ -79,7 +80,9 @@ def ambil_data_api():
                 except Exception:
                     kosong_berturut += 1
 
-                progress.progress(min(page / MAKS_HALAMAN, 1.0))
+                # Progres berdasarkan jumlah data yang berhasil diambil
+                current_progress = min(len(all_data) / total_estimasi, 1.0)
+                progress.progress(current_progress)
                 status.text(f"📄 Mengambil halaman {page} — total {len(all_data):,} data...")
 
         # Hanya berhenti jika sudah >5 halaman kosong berturut-turut
@@ -87,9 +90,10 @@ def ambil_data_api():
             status.text(f"🚫 Tidak ada data baru setelah {total_page_berhasil} halaman berhasil.")
             break
 
-    progress.empty()
+    progress.progress(1.0)  # pastikan progres bar penuh
     status.text(f"✅ Total {len(all_data):,} lowongan diperoleh dari {total_page_berhasil} halaman.")
     return all_data
+
 
 # === Konversi ke DataFrame ===
 def load_data():
