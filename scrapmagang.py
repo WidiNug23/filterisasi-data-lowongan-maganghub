@@ -252,45 +252,60 @@ for idx,row in df_page.iterrows():
     </div>
     """, unsafe_allow_html=True)
 
-# Fungsi pagination "..."
-def render_pagination(page_num, total_pages, delta=2):
-    pages = []
-    left = page_num - delta
-    right = page_num + delta
-    for i in range(1, total_pages + 1):
-        if i == 1 or i == total_pages or (left <= i <= right):
+# === Pagination ===
+if "page_num" not in st.session_state: st.session_state.page_num=1
+total_items=len(filtered_df)
+total_pages=max(1, math.ceil(total_items/ITEMS_PER_PAGE))
+start_idx=(st.session_state.page_num-1)*ITEMS_PER_PAGE
+end_idx=start_idx+ITEMS_PER_PAGE
+df_page=filtered_df.iloc[start_idx:end_idx]
+
+def get_peluang_class(p):
+    return "peluang-high" if p>=75 else "peluang-medium" if p>=50 else "peluang-low" if p>=25 else "peluang-verylow"
+
+columns = st.columns(3)
+for idx,row in df_page.iterrows():
+    col = columns[idx%3]
+    col.markdown(f"""
+    <div class="card">
+        <div class="card-title">{row['Lowongan']}</div>
+        <div class="card-subtitle">{row['Instansi']}</div>
+        <div class="card-subtitle2">{row['Lokasi']}</div>
+        <div class="card-detail"><b>Program Studi:</b> {row['Program Studi'] or '-'}</div>
+        <div class="card-detail"><b>Jenjang:</b> {row['Jenjang'] or '-'}</div>
+        <div class="card-detail"><b>Jumlah Kuota:</b> {row['Jumlah Kuota']}, Pendaftar: {row['Jumlah Pendaftar']}</div>
+        <div class="card-detail"><b>Peluang Lolos:</b> <span class="{get_peluang_class(row['Peluang Lolos (%)'])}">{row['Peluang Lolos (%)']}%</span></div>
+        <div class="card-detail"><b>Tanggal Publikasi:</b> {row['Tanggal Publikasi'].strftime("%d %b %Y %H:%M")}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# === Render tombol pagination interaktif ===
+def render_pagination_buttons():
+    delta=2
+    pages=[]
+    left=st.session_state.page_num - delta
+    right=st.session_state.page_num + delta
+    for i in range(1, total_pages+1):
+        if i==1 or i==total_pages or (left <= i <= right):
             pages.append(i)
         elif pages[-1] != '...':
             pages.append('...')
-    return pages
+    cols = st.columns(len(pages)+2)
+    # Prev
+    if cols[0].button("⏪ Prev") and st.session_state.page_num>1:
+        st.session_state.page_num -=1
+    # Page buttons
+    for i,p in enumerate(pages):
+        if p=="...":
+            cols[i+1].markdown("...")
+        else:
+            if cols[i+1].button(str(p)):
+                st.session_state.page_num = p
+    # Next
+    if cols[-1].button("Next ⏩") and st.session_state.page_num<total_pages:
+        st.session_state.page_num +=1
 
-# Callback untuk tombol halaman
-def go_to_page(p):
-    st.session_state.page_num = p
-
-# Callback Prev / Next
-def prev_page():
-    if st.session_state.page_num > 1:
-        st.session_state.page_num -= 1
-
-def next_page():
-    if st.session_state.page_num < total_pages:
-        st.session_state.page_num += 1
-
-# Navigasi horizontal menggunakan HTML + CSS (responsive)
-pages_to_render = render_pagination(st.session_state.page_num, total_pages)
-page_buttons_html = '<div class="page-nav">'
-page_buttons_html += f'<button class="page-btn" onclick="window.location.href=\'?page={max(st.session_state.page_num-1,1)}\'">⏪</button>'
-for p in pages_to_render:
-    active_class = "active" if p == st.session_state.page_num else ""
-    if p == "...":
-        page_buttons_html += '<span style="color:#00FFFF;font-weight:bold;">...</span>'
-    else:
-        page_buttons_html += f'<button class="page-btn {active_class}" onclick="window.location.href=\'?page={p}\'">{p}</button>'
-page_buttons_html += f'<button class="page-btn" onclick="window.location.href=\'?page={min(st.session_state.page_num+1,total_pages)}\'">⏩</button>'
-page_buttons_html += '</div>'
-st.markdown(page_buttons_html, unsafe_allow_html=True)
-
+render_pagination_buttons()
 # Tombol download CSV
 csv = df.to_csv(index=False).encode("utf-8")
 st.download_button("💾 Download CSV",data=csv,file_name=f"lowongan_maganghub_{int(time.time())}.csv",mime="text/csv")
