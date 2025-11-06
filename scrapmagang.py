@@ -6,6 +6,8 @@ import time
 import json
 import time
 import requests
+from threading import Thread
+
 
 def ambil_data_api():
     semua_data = []
