@@ -4,6 +4,33 @@ import streamlit as st
 import joblib
 import time
 import json
+import time
+import requests
+
+def ambil_data_api():
+    semua_data = []
+    for page in range(1, 51):
+        url = f"https://maganghub.kemnaker.go.id/api/lowongan?page={page}"
+        for attempt in range(3):  # coba 3 kali
+            try:
+                response = requests.get(url, timeout=20)
+                response.raise_for_status()
+                data = response.json().get("data", [])
+                if not data:
+                    print(f"Hentikan di halaman {page}, tidak ada data lagi.")
+                    return semua_data
+                semua_data.extend(data)
+                print(f"✅ Halaman {page} berhasil diambil ({len(data)} data)")
+                break  # keluar dari loop retry kalau berhasil
+            except requests.exceptions.Timeout:
+                print(f"⚠️ Timeout halaman {page}, percobaan ke-{attempt+1}")
+                time.sleep(3)
+            except Exception as e:
+                print(f"⚠️ Gagal ambil data halaman {page}: {e}")
+                break
+        time.sleep(1)  # beri jeda agar server tidak overload
+    return semua_data
+
 
 # === Konfigurasi dasar ===
 st.set_page_config(page_title="Filterisasi Lowongan Magang", layout="wide")
@@ -75,6 +102,7 @@ def ambil_data_api():
 def load_data():
     data = ambil_data_api()
     records = []
+
     for item in data:
         perusahaan = item.get("perusahaan", {}) or {}
         nama = perusahaan.get("nama_perusahaan", "")
@@ -104,15 +132,21 @@ def load_data():
 
         # === Parsing jenjang ===
         jenjang_raw = item.get("jenjang")
+        jenjang = ""
         if jenjang_raw:
             try:
                 jenjang_list = json.loads(jenjang_raw)
-                jenjang = ", ".join([j.get("title", "").strip() for j in jenjang_list if j.get("title")])
+                if isinstance(jenjang_list, list):
+                    # Bisa berupa list of dict atau list of string
+                    if all(isinstance(j, dict) for j in jenjang_list):
+                        jenjang = ", ".join([j.get("title", "").strip() for j in jenjang_list if j.get("title")])
+                    elif all(isinstance(j, str) for j in jenjang_list):
+                        jenjang = ", ".join([j.strip() for j in jenjang_list if j.strip()])
             except Exception:
-                jenjang = ""
-        else:
-            jenjang = ""
+                # fallback kalau bukan JSON valid
+                jenjang = str(jenjang_raw).strip()
 
+        # === Simpan ke records ===
         records.append({
             "Lowongan": item.get("posisi", ""),
             "Instansi": nama,
