@@ -174,43 +174,30 @@ if "df" not in st.session_state:
         "Take your time xixi ☕",
     ]
 
-    # Placeholder untuk spinner & pesan
-    spinner_placeholder = st.empty()
-    text_placeholder = st.empty()
+    msg_placeholder = st.empty()
 
-    # Fungsi untuk menampilkan spinner manual
-    def show_spinner():
-        with spinner_placeholder.container():
-            with st.spinner(" "):  # spinner aktif, tapi tanpa teks
-                msg_index = 0
-                while not result_container["done"]:
-                    text_placeholder.markdown(f"**{messages[msg_index]}**")
-                    msg_index = (msg_index + 1) % len(messages)
-                    time.sleep(3)
-
-    # Jalankan pemuatan data di background
     result_container = {"data": None, "done": False}
 
     def load_func():
+        # Proses pemuatan data dilakukan di background
         result_container["data"] = load_data()
         result_container["done"] = True
 
+    # Jalankan pemuatan data di thread terpisah
     loader_thread = Thread(target=load_func)
-    spinner_thread = Thread(target=show_spinner)
-
-    # Jalankan keduanya bersamaan
     loader_thread.start()
-    spinner_thread.start()
 
-    # Tunggu sampai data selesai
+    # Spinner utama — tetap aktif sampai load selesai
+    with st.spinner(""):
+        msg_index = 0
+        while not result_container["done"]:
+            msg_placeholder.markdown(f"**{messages[msg_index]}**")
+            msg_index = (msg_index + 1) % len(messages)
+            time.sleep(3)
+
+    # Setelah selesai
     loader_thread.join()
-    spinner_thread.join()
-
-    # Hapus spinner dan teks setelah selesai
-    spinner_placeholder.empty()
-    text_placeholder.empty()
-
-    # Simpan hasil data
+    msg_placeholder.empty()
     st.session_state.df = result_container["data"]
 
 df = st.session_state.df
@@ -220,7 +207,7 @@ if df.empty:
     st.stop()
 else:
     st.success("✅ Data berhasil dimuat!")
-
+    
 # === Session state untuk filtered df ===
 if "filtered_df" not in st.session_state:
     st.session_state.filtered_df = df.copy()
