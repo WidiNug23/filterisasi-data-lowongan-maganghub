@@ -82,6 +82,13 @@ header, footer {visibility: hidden;}
 }
 .info-note { font-size: 10px; color: #B0B0B0; margin-bottom: 10px; }
 
+.card-subtitle3 { 
+    font-size: 13px; 
+    color: #87CEFA; 
+    font-style: italic;
+    margin-bottom: 4px; 
+}
+
 /* Responsive untuk mobile */
 @media (max-width: 768px) {
     .page-nav { flex-wrap: wrap; gap:2px; }
@@ -145,6 +152,12 @@ def load_data():
         daftar = item.get("jumlah_terdaftar",0)
         peluang = 100 if daftar==0 else min(round((kuota/daftar)*100,2),100)
 
+                # Ambil nama kementerian (jika ada)
+        kementerian = ""
+        if item.get("government_agency") and isinstance(item["government_agency"], dict):
+            kementerian = item["government_agency"].get("government_agency_name", "")
+
+
         # Program studi
         program_studi=""
         try:
@@ -167,6 +180,7 @@ def load_data():
         records.append({
             "Lowongan": item.get("posisi",""),
             "Instansi": nama,
+            "Kementerian": kementerian,  # ✅ tambahan
             "Jenis Instansi": jenis_pred,
             "Program Studi": program_studi,
             "Jenjang": jenjang,
@@ -176,6 +190,7 @@ def load_data():
             "Peluang Lolos (%)": peluang,
             "Tanggal Publikasi": pd.to_datetime(item.get("created_at",None),errors="coerce")
         })
+
     df = pd.DataFrame(records)
     df.drop_duplicates(subset=["Lowongan","Instansi"], inplace=True)
     return df
@@ -243,6 +258,7 @@ for idx,row in df_page.iterrows():
     <div class="card">
         <div class="card-title">{row['Lowongan']}</div>
         <div class="card-subtitle">{row['Instansi']}</div>
+        <div class="card-subtitle3">{row["Kementerian"]}
         <div class="card-subtitle2">{row['Lokasi']}</div>
         <div class="card-detail"><b>Program Studi:</b> {row['Program Studi'] or '-'}</div>
         <div class="card-detail"><b>Jenjang:</b> {row['Jenjang'] or '-'}</div>
@@ -251,6 +267,7 @@ for idx,row in df_page.iterrows():
         <div class="card-detail"><b>Tanggal Publikasi:</b> {row['Tanggal Publikasi'].strftime("%d %b %Y %H:%M")}</div>
     </div>
     """, unsafe_allow_html=True)
+
 
 # === Pagination ===
 if "page_num" not in st.session_state:
