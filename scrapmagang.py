@@ -130,7 +130,7 @@ def ambil_data_api():
 
     uniq = int(time.time())
     kosong_beruntun = 0
-    batas_kosong = 10  # Jika 10 page berturut-turut kosong → anggap data selesai
+    batas_kosong = 50  # Jika 10 page berturut-turut kosong → anggap data selesai
 
     total_pages = 0
 
