@@ -12,11 +12,11 @@ st.set_page_config(page_title="Filterisasi Lowongan Magang", layout="wide")
 st.title("Sistem Filterisasi Lowongan MagangHub")
 
 BASE_URL = "https://maganghub.kemnaker.go.id/be/v1/api/list/vacancies-aktif"
-LIMIT = 1100
+LIMIT = 50                   # Ubah ke nilai aman
 MAKS_HALAMAN = 600
-MAKS_WORKER = 100
+MAKS_WORKER = 20            # 100 terlalu besar, bikin server throttle
 REFRESH_INTERVAL = 3000
-ITEMS_PER_PAGE = 18  # agar 3 kolom pas
+ITEMS_PER_PAGE = 18 # agar 3 kolom pas
 
 # === CSS Modern & Neon + sembunyikan navbar ===
 st.markdown("""
@@ -107,79 +107,68 @@ def load_model():
 model, vectorizer = load_model()
 
 # === Fungsi ambil data API ===
-def ambil_halaman(page, uniq, retries=5):
+def ambil_halaman(page, uniq, retries=3):
     url = f"{BASE_URL}?page={page}&limit={LIMIT}&t={uniq}"
 
     for attempt in range(retries):
         try:
-            res = requests.get(url, timeout=20)
+            res = requests.get(url, timeout=10)
 
-            # Jika status selain 200 → retry
-            if res.status_code != 200:
-                time.sleep(1 + attempt)
-                continue
+            if res.status_code == 200:
+                data = res.json().get("data", [])
+                return data if isinstance(data, list) else []
+        except:
+            time.sleep(0.5 * (attempt + 1))  # exponential backoff
 
-            js = res.json()
-            data = js.get("data", None)
-
-            # Jika respons kosong → retry
-            if not data:
-                time.sleep(1 + attempt)
-                continue
-
-            return data
-
-        except Exception:
-            time.sleep(1 + attempt)
-
-    return None   # tandai gagal total
+    return []
 
 
 def ambil_data_api():
-    pages = list(range(1, MAKS_HALAMAN + 1))
-    uniq = int(time.time())
     all_data = []
-    retry_queue = pages.copy()
-
     status = st.empty()
     progress = st.progress(0)
 
-    # Gunakan worker kecil agar API tidak memblokir
-    MAX_WORKERS = 20
+    uniq = int(time.time())
+    kosong_beruntun = 0
+    batas_kosong = 10  # Jika 10 page berturut-turut kosong → anggap data selesai
 
-    while retry_queue:
-        new_retry = []
+    total_pages = 0
 
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            futures = {executor.submit(ambil_halaman, p, uniq): p for p in retry_queue}
+    for batch_start in range(1, MAKS_HALAMAN + 1, MAKS_WORKER):
+
+        pages = list(range(batch_start, min(batch_start + MAKS_WORKER, MAKS_HALAMAN + 1)))
+        total_pages += len(pages)
+
+        with ThreadPoolExecutor(max_workers=MAKS_WORKER) as executor:
+            futures = {executor.submit(ambil_halaman, p, uniq): p for p in pages}
 
             for future in as_completed(futures):
                 page = futures[future]
                 try:
                     data = future.result()
 
-                    if data is None:
-                        new_retry.append(page)  # gagal → masukkan ke retry
-                    else:
+                    if data:
+                        kosong_beruntun = 0
                         all_data.extend(data)
+                    else:
+                        kosong_beruntun += 1
 
                 except:
-                    new_retry.append(page)
+                    kosong_beruntun += 1
 
-                progress.progress(len(all_data) / (MAKS_HALAMAN * LIMIT))
+                # ==== STATUS ====
+                progress.progress(page / MAKS_HALAMAN)
+                status.text(f"Memuat {len(all_data):,} data... Mengambil halaman {page}")
 
-        retry_queue = new_retry
-        status.text(f"Sisa halaman gagal: {retry_queue}")
+                # ==== EARLY STOP ====
+                if kosong_beruntun >= batas_kosong:
+                    status.text(f"Pengambilan dihentikan (API mulai mengirim halaman kosong). Total final {len(all_data):,} data.")
+                    progress.progress(1.0)
+                    return all_data
 
-        # Jika gagal terus, jangan infinite loop
-        if len(new_retry) == len(pages):
-            break
-
-    status.text(f"Total data terkumpul: {len(all_data)}")
+    status.text(f"✅ Total {len(all_data):,} lowongan berhasil diambil")
     progress.progress(1.0)
-
     return all_data
-
 
 def load_data():
     data = ambil_data_api()
