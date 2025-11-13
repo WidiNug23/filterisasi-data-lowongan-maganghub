@@ -16,6 +16,7 @@ LIMIT = 1000
 MAKS_HALAMAN = 600
 MAKS_WORKER = 50   # lebih stabil dari 100
 RETRY_DELAY = 2 
+REFRESH_INTERVAL = 3000
 ITEMS_PER_PAGE = 18
 
 # === CSS Modern & Neon + sembunyikan navbar ===
