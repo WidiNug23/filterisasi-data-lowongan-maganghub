@@ -107,37 +107,79 @@ def load_model():
 model, vectorizer = load_model()
 
 # === Fungsi ambil data API ===
-def ambil_halaman(page, uniq, retries=3):
+def ambil_halaman(page, uniq, retries=5):
     url = f"{BASE_URL}?page={page}&limit={LIMIT}&t={uniq}"
-    for _ in range(retries):
+
+    for attempt in range(retries):
         try:
-            res = requests.get(url, timeout=15)
-            if res.status_code == 200: return res.json().get("data", [])
-        except: time.sleep(1)
-    return []
+            res = requests.get(url, timeout=20)
+
+            # Jika status selain 200 → retry
+            if res.status_code != 200:
+                time.sleep(1 + attempt)
+                continue
+
+            js = res.json()
+            data = js.get("data", None)
+
+            # Jika respons kosong → retry
+            if not data:
+                time.sleep(1 + attempt)
+                continue
+
+            return data
+
+        except Exception:
+            time.sleep(1 + attempt)
+
+    return None   # tandai gagal total
+
 
 def ambil_data_api():
+    pages = list(range(1, MAKS_HALAMAN + 1))
+    uniq = int(time.time())
     all_data = []
+    retry_queue = pages.copy()
+
     status = st.empty()
     progress = st.progress(0)
-    uniq = int(time.time())
-    total_estimasi = MAKS_HALAMAN * LIMIT
 
-    for batch_start in range(1, MAKS_HALAMAN + 1, MAKS_WORKER):
-        pages = list(range(batch_start, min(batch_start + MAKS_WORKER, MAKS_HALAMAN + 1)))
-        with ThreadPoolExecutor(max_workers=MAKS_WORKER) as executor:
-            futures = {executor.submit(ambil_halaman, p, uniq): p for p in pages}
+    # Gunakan worker kecil agar API tidak memblokir
+    MAX_WORKERS = 20
+
+    while retry_queue:
+        new_retry = []
+
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            futures = {executor.submit(ambil_halaman, p, uniq): p for p in retry_queue}
+
             for future in as_completed(futures):
                 page = futures[future]
                 try:
                     data = future.result()
-                    if data: all_data.extend(data)
-                except: pass
-                progress.progress(min(len(all_data)/total_estimasi, 1.0))
-                status.text(f"Memuat {len(all_data):,} data. Sabar ya, Kak. Datanya banyak")
-    status.text(f"✅ Total {len(all_data):,} lowongan")
+
+                    if data is None:
+                        new_retry.append(page)  # gagal → masukkan ke retry
+                    else:
+                        all_data.extend(data)
+
+                except:
+                    new_retry.append(page)
+
+                progress.progress(len(all_data) / (MAKS_HALAMAN * LIMIT))
+
+        retry_queue = new_retry
+        status.text(f"Sisa halaman gagal: {retry_queue}")
+
+        # Jika gagal terus, jangan infinite loop
+        if len(new_retry) == len(pages):
+            break
+
+    status.text(f"Total data terkumpul: {len(all_data)}")
     progress.progress(1.0)
+
     return all_data
+
 
 def load_data():
     data = ambil_data_api()
