@@ -14,7 +14,7 @@ st.title("Sistem Filterisasi Lowongan MagangHub")
 BASE_URL = "https://maganghub.kemnaker.go.id/be/v1/api/list/vacancies-aktif"
 LIMIT = 1100
 MAKS_HALAMAN = 600
-MAKS_WORKER = 80
+MAKS_WORKER = 100
 REFRESH_INTERVAL = 3000
 ITEMS_PER_PAGE = 18  # agar 3 kolom pas
 
