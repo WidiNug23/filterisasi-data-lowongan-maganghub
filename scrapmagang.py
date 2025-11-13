@@ -107,19 +107,27 @@ def load_model():
 model, vectorizer = load_model()
 
 # === Fungsi ambil data API ===
-def ambil_halaman(page, uniq, retries=3):
+def ambil_halaman(page, uniq, retries=5):
     url = f"{BASE_URL}?page={page}&limit={LIMIT}&t={uniq}"
 
     for attempt in range(retries):
         try:
-            res = requests.get(url, timeout=10)
+            res = requests.get(url, timeout=12)
 
             if res.status_code == 200:
                 data = res.json().get("data", [])
-                return data if isinstance(data, list) else []
-        except:
-            time.sleep(0.5 * (attempt + 1))  # exponential backoff
 
+                # Jika data valid, kembalikan
+                if isinstance(data, list) and len(data) > 0:
+                    return data
+
+            # Jika kosong → tunggu dan coba lagi
+            time.sleep(0.3 * (attempt + 1))
+
+        except:
+            time.sleep(0.5 * (attempt + 1))
+
+    # Setelah 5 percobaan tetap kosong → tetap return empty
     return []
 
 
@@ -129,44 +137,30 @@ def ambil_data_api():
     progress = st.progress(0)
 
     uniq = int(time.time())
-    kosong_beruntun = 0
-    batas_kosong = 50  # Jika 10 page berturut-turut kosong → anggap data selesai
-
-    total_pages = 0
 
     for batch_start in range(1, MAKS_HALAMAN + 1, MAKS_WORKER):
 
         pages = list(range(batch_start, min(batch_start + MAKS_WORKER, MAKS_HALAMAN + 1)))
-        total_pages += len(pages)
 
         with ThreadPoolExecutor(max_workers=MAKS_WORKER) as executor:
             futures = {executor.submit(ambil_halaman, p, uniq): p for p in pages}
 
             for future in as_completed(futures):
                 page = futures[future]
+
                 try:
                     data = future.result()
-
                     if data:
-                        kosong_beruntun = 0
                         all_data.extend(data)
-                    else:
-                        kosong_beruntun += 1
 
                 except:
-                    kosong_beruntun += 1
+                    pass
 
                 # ==== STATUS ====
                 progress.progress(page / MAKS_HALAMAN)
                 status.text(f"Memuat {len(all_data):,} data... Mengambil halaman {page}")
 
-                # ==== EARLY STOP ====
-                if kosong_beruntun >= batas_kosong:
-                    status.text(f"Pengambilan dihentikan (API mulai mengirim halaman kosong). Total final {len(all_data):,} data.")
-                    progress.progress(1.0)
-                    return all_data
-
-    status.text(f"✅ Total {len(all_data):,} lowongan berhasil diambil")
+    status.text(f"✅ Total {len(all_data):,} data berhasil diambil")
     progress.progress(1.0)
     return all_data
 
