@@ -12,12 +12,11 @@ st.set_page_config(page_title="Filterisasi Lowongan Magang", layout="wide")
 st.title("Sistem Filterisasi Lowongan MagangHub")
 
 BASE_URL = "https://maganghub.kemnaker.go.id/be/v1/api/list/vacancies-aktif"
-LIMIT = 1000
+LIMIT = 1100
 MAKS_HALAMAN = 600
-MAKS_WORKER = 50   # lebih stabil dari 100
-RETRY_DELAY = 2 
+MAKS_WORKER = 80
 REFRESH_INTERVAL = 3000
-ITEMS_PER_PAGE = 18
+ITEMS_PER_PAGE = 18  # agar 3 kolom pas
 
 # === CSS Modern & Neon + sembunyikan navbar ===
 st.markdown("""
@@ -110,58 +109,35 @@ model, vectorizer = load_model()
 # === Fungsi ambil data API ===
 def ambil_halaman(page, uniq, retries=3):
     url = f"{BASE_URL}?page={page}&limit={LIMIT}&t={uniq}"
-    for i in range(retries):
+    for _ in range(retries):
         try:
-            res = requests.get(url, timeout=10)
-            if res.status_code == 200:
-                data = res.json().get("data", [])
-                if data:
-                    return data
-                else:
-                    return []  # tidak ada data di halaman ini
-        except Exception:
-            time.sleep(RETRY_DELAY * (i + 1))
+            res = requests.get(url, timeout=15)
+            if res.status_code == 200: return res.json().get("data", [])
+        except: time.sleep(1)
     return []
 
 def ambil_data_api():
     all_data = []
-    uniq = int(time.time())
     status = st.empty()
-    progress = st.progress(0.0)
-
-    consecutive_empty = 0
-    total_pages = 0
-    total_estimasi = 40000  # target realistis agar progress bar akurat
+    progress = st.progress(0)
+    uniq = int(time.time())
+    total_estimasi = MAKS_HALAMAN * LIMIT
 
     for batch_start in range(1, MAKS_HALAMAN + 1, MAKS_WORKER):
         pages = list(range(batch_start, min(batch_start + MAKS_WORKER, MAKS_HALAMAN + 1)))
-
         with ThreadPoolExecutor(max_workers=MAKS_WORKER) as executor:
             futures = {executor.submit(ambil_halaman, p, uniq): p for p in pages}
             for future in as_completed(futures):
                 page = futures[future]
                 try:
                     data = future.result()
-                    if data:
-                        all_data.extend(data)
-                        consecutive_empty = 0
-                    else:
-                        consecutive_empty += 1
-                except Exception:
-                    consecutive_empty += 1
-
-                total_pages += 1
-                progress.progress(min(len(all_data) / total_estimasi, 1.0))
-                status.text(f"📦 Mengambil halaman {page} | Total {len(all_data):,} data...")
-
-        # Jika sudah 10 batch kosong berturut-turut, hentikan
-        if consecutive_empty >= 10:
-            break
-
-    status.text(f"✅ Pengambilan selesai. Total {len(all_data):,} data.")
+                    if data: all_data.extend(data)
+                except: pass
+                progress.progress(min(len(all_data)/total_estimasi, 1.0))
+                status.text(f"Memuat {len(all_data):,} data. Sabar ya, Kak. Datanya banyak")
+    status.text(f"✅ Total {len(all_data):,} lowongan")
     progress.progress(1.0)
     return all_data
-
 
 def load_data():
     data = ambil_data_api()
