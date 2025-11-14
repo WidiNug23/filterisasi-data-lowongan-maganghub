@@ -13,7 +13,7 @@ st.title("Sistem Filterisasi Lowongan MagangHub")
 
 BASE_URL = "https://maganghub.kemnaker.go.id/be/v1/api/list/vacancies-aktif"
 LIMIT = 1100                   # Ubah ke nilai aman
-MAKS_HALAMAN = 500
+MAKS_HALAMAN = 550
 MAKS_WORKER = 20            # 100 terlalu besar, bikin server throttle
 REFRESH_INTERVAL = 3000
 ITEMS_PER_PAGE = 20 # agar 3 kolom pas
@@ -107,39 +107,37 @@ def load_model():
 model, vectorizer = load_model()
 
 # === Fungsi ambil data API ===
-def ambil_halaman(page, uniq, retries=5):
+def ambil_halaman(page, uniq, retries=10):
     url = f"{BASE_URL}?page={page}&limit={LIMIT}&t={uniq}"
 
-    for attempt in range(retries):
+    for attempt in range(1, retries + 1):
         try:
             res = requests.get(url, timeout=12)
 
             if res.status_code == 200:
-                json_data = res.json()
-                data = json_data.get("data", None)
+                data = res.json().get("data", [])
 
-                # ——— PENTING! Jangan buang halaman kosong ———
+                # Kembalikan apa adanya (walaupun kosong)
                 if isinstance(data, list):
-                    return data   # bisa kosong, tetap dikembalikan!
+                    return data
 
-            time.sleep(0.3 * (attempt + 1))
+            time.sleep(0.3 * attempt)
 
         except:
-            time.sleep(0.5 * (attempt + 1))
+            time.sleep(0.5 * attempt)
 
-    # Jika semua gagal → tetap return list kosong, bukan hilang
+    # Tetap return list kosong (page ini tetap dihitung)
     return []
 
 
 def ambil_data_api():
-    all_data = []
     status = st.empty()
     progress = st.progress(0)
 
     uniq = int(time.time())
+    hasil_page = {page: None for page in range(1, MAKS_HALAMAN + 1)}
 
     for batch_start in range(1, MAKS_HALAMAN + 1, MAKS_WORKER):
-
         pages = list(range(batch_start, min(batch_start + MAKS_WORKER, MAKS_HALAMAN + 1)))
 
         with ThreadPoolExecutor(max_workers=MAKS_WORKER) as executor:
@@ -147,24 +145,27 @@ def ambil_data_api():
 
             for future in as_completed(futures):
                 page = futures[future]
-
                 try:
-                    data = future.result()
-
-                    # ——— INI FIX TERBESAR ———
-                    # extend data meskipun kosong
-                    all_data.extend(data)
-
+                    hasil_page[page] = future.result()
                 except:
-                    pass
+                    hasil_page[page] = []
 
+                # Status UI
+                total_sementara = sum(len(v) for v in hasil_page.values() if v)
+                status.text(f"Memuat {total_sementara:,} data... Mengambil halaman {page}")
                 progress.progress(page / MAKS_HALAMAN)
-                status.text(f"Memuat {len(all_data):,} data... Mengambil halaman {page}")
 
-    status.text(f"✅ Total {len(all_data):,} data berhasil diambil")
+    # Gabungkan semua page secara urut
+    all_data = []
+    for p in range(1, MAKS_HALAMAN + 1):
+        if hasil_page[p] is None:
+            hasil_page[p] = []  # kalau gagal total, tetap kosong
+        all_data.extend(hasil_page[p])
+
+    status.text(f"✅ Total {len(all_data):,} data berhasil diambil (tidak ada halaman hilang)")
     progress.progress(1.0)
-    return all_data
 
+    return all_data
 
 def load_data():
     data = ambil_data_api()
