@@ -12,7 +12,7 @@ st.set_page_config(page_title="Filterisasi Lowongan Magang", layout="wide")
 st.title("Sistem Filterisasi Lowongan MagangHub")
 
 BASE_URL = "https://maganghub.kemnaker.go.id/be/v1/api/list/vacancies-aktif"
-LIMIT = 1400                   # Ubah ke nilai aman
+LIMIT = 1100                   # Ubah ke nilai aman
 MAKS_HALAMAN = 600
 MAKS_WORKER = 30            # 100 terlalu besar, bikin server throttle
 REFRESH_INTERVAL = 5000
@@ -116,13 +116,17 @@ def ambil_halaman(page, uniq, retries=10):
 
             if res.status_code == 200:
                 data = res.json().get("data", [])
-                return data if isinstance(data, list) else []
+
+                # Selalu return data, meskipun kosong
+                if isinstance(data, list):
+                    return data
 
             time.sleep(0.3 * attempt)
 
         except:
             time.sleep(0.5 * attempt)
 
+    # tetap return list kosong kalau gagal total
     return []
 
 
@@ -131,37 +135,37 @@ def ambil_data_api():
     progress = st.progress(0)
 
     uniq = int(time.time())
+    hasil_page = {}
 
+    for batch_start in range(1, MAKS_HALAMAN + 1, MAKS_WORKER):
+        
+        pages = list(range(batch_start, min(batch_start + MAKS_WORKER, MAKS_HALAMAN + 1)))
+
+        with ThreadPoolExecutor(max_workers=MAKS_WORKER) as executor:
+            futures = {executor.submit(ambil_halaman, p, uniq): p for p in pages}
+
+            for future in as_completed(futures):
+                page = futures[future]
+                
+                try:
+                    hasil_page[page] = future.result()
+                except:
+                    hasil_page[page] = []
+
+                total_terambil = sum(len(hasil_page[p]) for p in hasil_page)
+
+                status.text(f"Memuat {total_terambil:,} data... Halaman {page}")
+                progress.progress(page / MAKS_HALAMAN)
+
+    # gabungkan seluruh page secara berurutan
     all_data = []
-    kosong_beruntun = 0
-    BATAS_KOSONG = 5  # berhenti setelah 5 halaman kosong beruntun
-
-    page = 1
-
-    while True:
-        data = ambil_halaman(page, uniq)
-
-        if data:
-            kosong_beruntun = 0
-            all_data.extend(data)
-        else:
-            kosong_beruntun += 1
-
-        # status
-        status.text(f"Memuat {len(all_data):,} data... Halaman {page}")
-        progress.progress(min(1.0, kosong_beruntun / BATAS_KOSONG))
-
-        # Jika 5 halaman kosong berturut-turut → data habis
-        if kosong_beruntun >= BATAS_KOSONG:
-            break
-
-        page += 1
+    for p in range(1, MAKS_HALAMAN + 1):
+        all_data.extend(hasil_page.get(p, []))
 
     status.text(f"✅ Total {len(all_data):,} data berhasil diambil")
     progress.progress(1.0)
 
     return all_data
-
 
 
 def load_data():
