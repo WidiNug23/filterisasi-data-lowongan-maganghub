@@ -117,7 +117,7 @@ def ambil_halaman(page, uniq, retries=10):
             if res.status_code == 200:
                 data = res.json().get("data", [])
 
-                # Kembalikan apa adanya (walaupun kosong)
+                # Selalu return data, meskipun kosong
                 if isinstance(data, list):
                     return data
 
@@ -126,7 +126,7 @@ def ambil_halaman(page, uniq, retries=10):
         except:
             time.sleep(0.5 * attempt)
 
-    # Tetap return list kosong (page ini tetap dihitung)
+    # tetap return list kosong kalau gagal total
     return []
 
 
@@ -135,9 +135,10 @@ def ambil_data_api():
     progress = st.progress(0)
 
     uniq = int(time.time())
-    hasil_page = {page: None for page in range(1, MAKS_HALAMAN + 1)}
+    hasil_page = {}
 
     for batch_start in range(1, MAKS_HALAMAN + 1, MAKS_WORKER):
+        
         pages = list(range(batch_start, min(batch_start + MAKS_WORKER, MAKS_HALAMAN + 1)))
 
         with ThreadPoolExecutor(max_workers=MAKS_WORKER) as executor:
@@ -145,27 +146,27 @@ def ambil_data_api():
 
             for future in as_completed(futures):
                 page = futures[future]
+                
                 try:
                     hasil_page[page] = future.result()
                 except:
                     hasil_page[page] = []
 
-                # Status UI
-                total_sementara = sum(len(v) for v in hasil_page.values() if v)
-                status.text(f"Memuat {total_sementara:,} data... Mengambil halaman {page}")
+                total_terambil = sum(len(hasil_page[p]) for p in hasil_page)
+
+                status.text(f"Memuat {total_terambil:,} data... Halaman {page}")
                 progress.progress(page / MAKS_HALAMAN)
 
-    # Gabungkan semua page secara urut
+    # gabungkan seluruh page secara berurutan
     all_data = []
     for p in range(1, MAKS_HALAMAN + 1):
-        if hasil_page[p] is None:
-            hasil_page[p] = []  # kalau gagal total, tetap kosong
-        all_data.extend(hasil_page[p])
+        all_data.extend(hasil_page.get(p, []))
 
-    status.text(f"✅ Total {len(all_data):,} data berhasil diambil (tidak ada halaman hilang)")
+    status.text(f"✅ Total {len(all_data):,} data berhasil diambil")
     progress.progress(1.0)
 
     return all_data
+
 
 def load_data():
     data = ambil_data_api()
