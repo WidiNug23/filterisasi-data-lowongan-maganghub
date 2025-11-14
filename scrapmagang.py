@@ -12,9 +12,9 @@ st.set_page_config(page_title="Filterisasi Lowongan Magang", layout="wide")
 st.title("Sistem Filterisasi Lowongan MagangHub")
 
 BASE_URL = "https://maganghub.kemnaker.go.id/be/v1/api/list/vacancies-aktif"
-LIMIT = 1080                   # Ubah ke nilai aman
+LIMIT = 1000                   # Ubah ke nilai aman
 MAKS_HALAMAN = 600
-MAKS_WORKER = 40            # 100 terlalu besar, bikin server throttle
+MAKS_WORKER = 30            # 100 terlalu besar, bikin server throttle
 REFRESH_INTERVAL = 5000
 ITEMS_PER_PAGE = 40 # agar 3 kolom pas
 
