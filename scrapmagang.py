@@ -207,18 +207,20 @@ def load_data():
         except: jenjang=str(item.get("jenjang",""))
 
         records.append({
-            "Lowongan": item.get("posisi",""),
+            "Lowongan": item.get("posisi", ""),
             "Instansi": nama,
             "Kementerian": kementerian,  # ✅ tambahan
             "Jenis Instansi": jenis_pred,
             "Program Studi": program_studi,
             "Jenjang": jenjang,
-            "Lokasi": f"{perusahaan.get('nama_kabupaten','')}, {perusahaan.get('nama_provinsi','')}",
+            "Lokasi": f"{perusahaan.get('nama_kabupaten', '')}, {perusahaan.get('nama_provinsi', '')}",
             "Jumlah Kuota": kuota,
             "Jumlah Pendaftar": daftar,
             "Peluang Lolos (%)": peluang,
-            "Tanggal Publikasi": pd.to_datetime(item.get("created_at",None),errors="coerce")
+            "Tanggal Publikasi": pd.to_datetime(item.get("created_at", None), errors="coerce"),
+            "Link": f"https://maganghub.kemnaker.go.id/lowongan/view/{item.get('id_posisi', '')}"
         })
+
 
     df = pd.DataFrame(records)
     df.drop_duplicates(subset=["Lowongan","Instansi"], inplace=True)
@@ -284,10 +286,11 @@ columns = st.columns(3)
 for idx,row in df_page.iterrows():
     col = columns[idx%3]
     col.markdown(f"""
+<a href="{row['Link']}" target="_blank" style="text-decoration:none;">
     <div class="card">
         <div class="card-title">{row['Lowongan']}</div>
         <div class="card-subtitle">{row['Instansi']}</div>
-        <div class="card-subtitle3">{row["Kementerian"]}
+        <div class="card-subtitle3">{row["Kementerian"]}</div>
         <div class="card-subtitle2">{row['Lokasi']}</div>
         <div class="card-detail"><b>Program Studi:</b> {row['Program Studi'] or '-'}</div>
         <div class="card-detail"><b>Jenjang:</b> {row['Jenjang'] or '-'}</div>
@@ -295,6 +298,7 @@ for idx,row in df_page.iterrows():
         <div class="card-detail"><b>Peluang Lolos:</b> <span class="{get_peluang_class(row['Peluang Lolos (%)'])}">{row['Peluang Lolos (%)']}%</span></div>
         <div class="card-detail"><b>Tanggal Publikasi:</b> {row['Tanggal Publikasi'].strftime("%d %b %Y %H:%M")}</div>
     </div>
+    </a>
     """, unsafe_allow_html=True)
 
 
